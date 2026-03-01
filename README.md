@@ -10,8 +10,5 @@ Project Bihon is an Android application designed to help families prepare for an
 - Setup repository README with tracking table and documentation
 - Initialize new Flutter project
 
-## Project Information
-
-**Internal Code Name:** Project Bihon
-
-**Current Release:** PB.010.000
+### Important Links:
+- Design Specs: https://github.com/xy-real/bihon-docportal
