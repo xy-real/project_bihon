@@ -37,6 +37,11 @@ class StarterHomePage extends StatefulWidget {
 class _StarterHomePageState extends State<StarterHomePage> {
   final TextEditingController _itemNameController = TextEditingController();
   String _statusText = 'Ready to build your first feature.';
+  final List<List<String>> _sampleRows = const [
+    ['Flashlight', '2', 'Available'],
+    ['Water (L)', '10', 'Low'],
+    ['First Aid Kit', '1', 'Available'],
+  ];
 
   @override
   void dispose() {
@@ -79,6 +84,15 @@ class _StarterHomePageState extends State<StarterHomePage> {
                 const SizedBox(height: 12),
                 Text(_statusText),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          AppCard(
+            title: 'Table Example',
+            description: 'Sample inventory snapshot using AppTable.',
+            child: AppTable(
+              headers: const ['Item', 'Qty', 'Status'],
+              rows: _sampleRows,
             ),
           ),
         ],
