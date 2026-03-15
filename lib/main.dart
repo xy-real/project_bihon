@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-import 'shared/shared.dart';
-
 void main() {
   runApp(const MyApp());
 }
@@ -22,81 +20,19 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
         colorScheme: const ShadZincColorScheme.dark(),
       ),
-      home: const StarterHomePage(),
+      home: const HomePage(),
     );
   }
 }
 
-class StarterHomePage extends StatefulWidget {
-  const StarterHomePage({super.key});
-
-  @override
-  State<StarterHomePage> createState() => _StarterHomePageState();
-}
-
-class _StarterHomePageState extends State<StarterHomePage> {
-  final TextEditingController _itemNameController = TextEditingController();
-  String _statusText = 'Ready to build your first feature.';
-  final List<List<String>> _sampleRows = const [
-    ['Flashlight', '2', 'Available'],
-    ['Water (L)', '10', 'Low'],
-    ['First Aid Kit', '1', 'Available'],
-  ];
-
-  @override
-  void dispose() {
-    _itemNameController.dispose();
-    super.dispose();
-  }
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Project Bihon Starter'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          AppCard(
-            title: 'Start Coding Here',
-            description: 'Use this page as your playground while learning Flutter.',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AppTextField(
-                  controller: _itemNameController,
-                  label: 'Item Name',
-                  placeholder: 'e.g. Flashlight',
-                ),
-                const SizedBox(height: 16),
-                AppButton(
-                  onPressed: () {
-                    final name = _itemNameController.text.trim();
-                    setState(() {
-                      _statusText = name.isEmpty
-                          ? 'Type an item name first.'
-                          : 'Saved draft item: $name';
-                    });
-                  },
-                  child: const Text('Save Draft'),
-                ),
-                const SizedBox(height: 12),
-                Text(_statusText),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          AppCard(
-            title: 'Table Example',
-            description: 'Sample inventory snapshot using AppTable.',
-            child: AppTable(
-              headers: const ['Item', 'Qty', 'Status'],
-              rows: _sampleRows,
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Project Bihon')),
+      body: const Center(child: Text('Clean slate ready. Start building!')),
     );
   }
 }
