@@ -51,7 +51,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Project Bihon'),
+        title: const Text('Crisync'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
