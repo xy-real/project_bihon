@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
 import 'shared/shared.dart';
 
 void main() {
@@ -65,7 +66,7 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(child: Text('Clean slate ready. Start building!')),
+      body: const SupplyTrackerPage(),
     );
   }
 }
