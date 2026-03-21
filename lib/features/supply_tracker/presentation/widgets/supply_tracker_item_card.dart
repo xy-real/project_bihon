@@ -38,151 +38,163 @@ class SupplyTrackerItemCard extends StatelessWidget {
     final isExpiringSoon = _isExpiringSoon();
 
     return ShadCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with item name and status indicator
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    itemName,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (isExpired)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with item name and status indicator
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
                     child: Text(
-                      'Expired',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.red.shade700,
-                            fontWeight: FontWeight.w600,
+                      itemName,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
-                    ),
-                  )
-                else if (isExpiringSoon)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Expiring Soon',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.orange.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Description
-            Text(
-              description,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            // Stock and Expiration Date row
-            Row(
-              children: [
-                // Stock Count
-                Expanded(
-                  child: Row(
+                  const SizedBox(width: 4),
+                  if (isExpired)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Expired',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Colors.red.shade700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                      ),
+                    )
+                  else if (isExpiringSoon)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Soon',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Colors.orange.shade700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              // Description
+              Text(
+                description,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                    ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 10),
+              // Stock and Expiration Date row
+              Column(
+                children: [
+                  // Stock Count
+                  Row(
                     children: [
                       Icon(
                         lucide.LucideIcons.package,
-                        size: 18,
+                        size: 16,
                         color: Colors.grey.shade600,
                       ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Stock',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                ),
-                          ),
-                          Text(
-                            '$stockCount items',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ],
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Stock',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 10,
+                                  ),
+                            ),
+                            Text(
+                              '$stockCount items',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-                // Expiration Date
-                Expanded(
-                  child: Row(
+                  const SizedBox(height: 8),
+                  // Expiration Date
+                  Row(
                     children: [
                       Icon(
                         lucide.LucideIcons.calendar,
-                        size: 18,
+                        size: 16,
                         color: isExpired
                             ? Colors.red.shade600
                             : isExpiringSoon
                                 ? Colors.orange.shade600
                                 : Colors.grey.shade600,
                       ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Expires',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                ),
-                          ),
-                          Text(
-                            _formatDate(expirationDate),
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: isExpired
-                                      ? Colors.red.shade600
-                                      : isExpiringSoon
-                                          ? Colors.orange.shade600
-                                          : null,
-                                ),
-                          ),
-                        ],
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Expires',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 10,
+                                  ),
+                            ),
+                            Text(
+                              _formatDate(expirationDate),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                    color: isExpired
+                                        ? Colors.red.shade600
+                                        : isExpiringSoon
+                                            ? Colors.orange.shade600
+                                            : null,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
