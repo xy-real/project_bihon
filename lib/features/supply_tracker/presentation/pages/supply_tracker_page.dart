@@ -47,13 +47,18 @@ class SupplyTrackerPage extends StatelessWidget {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth > 900 ? 3 : screenWidth > 600 ? 2 : 1;
+    final childAspectRatio = screenWidth > 900
+      ? 1.35
+      : screenWidth > 600
+        ? 1.18
+        : 1.55;
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: GridView.builder(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
-          childAspectRatio: 1.2,
+          childAspectRatio: childAspectRatio,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
