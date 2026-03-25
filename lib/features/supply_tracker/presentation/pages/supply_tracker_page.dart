@@ -1,50 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:project_bihon/features/supply_tracker/presentation/widgets/widgets.dart';
 
-class SupplyTrackerPage extends StatelessWidget {
+enum SupplyTrackerView { cards, table }
+
+class SupplyTrackerPage extends StatefulWidget {
   const SupplyTrackerPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final mockItems = [
-      {
-        'itemName': 'Medical Masks (N95)',
-        'description': 'High-efficiency respirator masks for medical use',
-        'stockCount': 150,
-        'expirationDate': DateTime(2026, 6, 15),
-      },
-      {
-        'itemName': 'Surgical Gloves',
-        'description': 'Latex-free, sterile surgical gloves',
-        'stockCount': 500,
-        'expirationDate': DateTime(2025, 12, 31),
-      },
-      {
-        'itemName': 'Antiseptic Solution',
-        'description': '70% Isopropyl alcohol antiseptic',
-        'stockCount': 45,
-        'expirationDate': DateTime(2026, 2, 28),
-      },
-      {
-        'itemName': 'First Aid Kit',
-        'description': 'Comprehensive emergency first aid supplies',
-        'stockCount': 12,
-        'expirationDate': DateTime(2026, 9, 10),
-      },
-      {
-        'itemName': 'Bandages & Gauze',
-        'description': 'Sterile medical bandages and gauze pads',
-        'stockCount': 200,
-        'expirationDate': DateTime(2027, 1, 5),
-      },
-      {
-        'itemName': 'Thermometer (Digital)',
-        'description': 'Non-contact infrared digital thermometer',
-        'stockCount': 8,
-        'expirationDate': DateTime(2028, 5, 20),
-      },
-    ];
+  State<SupplyTrackerPage> createState() => _SupplyTrackerPageState();
+}
 
+class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
+  SupplyTrackerView _selectedView = SupplyTrackerView.table;
+
+  final List<Map<String, dynamic>> _mockItems = [
+    {
+      'itemName': 'Medical Masks (N95)',
+      'description': 'High-efficiency respirator masks for medical use',
+      'stockCount': 150,
+      'expirationDate': DateTime(2026, 6, 15),
+      'imageUrl': null,
+    },
+    {
+      'itemName': 'Surgical Gloves',
+      'description': 'Latex-free, sterile surgical gloves',
+      'stockCount': 500,
+      'expirationDate': DateTime(2025, 12, 31),
+      'imageUrl': null,
+    },
+    {
+      'itemName': 'Antiseptic Solution',
+      'description': '70% Isopropyl alcohol antiseptic',
+      'stockCount': 45,
+      'expirationDate': DateTime(2026, 2, 28),
+      'imageUrl': null,
+    },
+    {
+      'itemName': 'First Aid Kit',
+      'description': 'Comprehensive emergency first aid supplies',
+      'stockCount': 12,
+      'expirationDate': DateTime(2026, 9, 10),
+      'imageUrl': null,
+    },
+    {
+      'itemName': 'Bandages & Gauze',
+      'description': 'Sterile medical bandages and gauze pads',
+      'stockCount': 200,
+      'expirationDate': DateTime(2027, 1, 5),
+      'imageUrl': null,
+    },
+    {
+      'itemName': 'Thermometer (Digital)',
+      'description': 'Non-contact infrared digital thermometer',
+      'stockCount': 8,
+      'expirationDate': DateTime(2028, 5, 20),
+      'imageUrl': null,
+    },
+  ];
+
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  void _showItemDetailsDialog(
+    BuildContext context, {
+    required String itemName,
+    required String description,
+    required int stockCount,
+    required DateTime expirationDate,
+    String? imageUrl,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SupplyTrackerItemCard(
+                itemName: itemName,
+                description: description,
+                stockCount: stockCount,
+                expirationDate: expirationDate,
+                imageUrl: imageUrl,
+                onTap: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCardsView() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -52,32 +104,139 @@ class SupplyTrackerPage extends StatelessWidget {
         final gap = 16.0;
         final cardWidth = (width - (gap * (columns - 1))) / columns;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            children: [
-              for (final item in mockItems)
-                SizedBox(
-                  width: cardWidth,
-                  child: SupplyTrackerItemCard(
-                    itemName: item['itemName'] as String,
-                    description: item['description'] as String,
-                    stockCount: item['stockCount'] as int,
-                    expirationDate: item['expirationDate'] as DateTime,
-                    imageUrl: null,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Tapped: ${item['itemName']}')),
-                      );
-                    },
-                  ),
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final item in _mockItems)
+              SizedBox(
+                width: cardWidth,
+                child: SupplyTrackerItemCard(
+                  itemName: item['itemName'] as String,
+                  description: item['description'] as String,
+                  stockCount: item['stockCount'] as int,
+                  expirationDate: item['expirationDate'] as DateTime,
+                  imageUrl: item['imageUrl'] as String?,
+                  onTap: () {
+                    _showItemDetailsDialog(
+                      context,
+                      itemName: item['itemName'] as String,
+                      description: item['description'] as String,
+                      stockCount: item['stockCount'] as int,
+                      expirationDate: item['expirationDate'] as DateTime,
+                      imageUrl: item['imageUrl'] as String?,
+                    );
+                  },
                 ),
-            ],
-          ),
+              ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildTableView() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 860),
+        child: DataTable(
+          columnSpacing: 20,
+          headingRowHeight: 48,
+          dataRowMinHeight: 56,
+          dataRowMaxHeight: 72,
+          columns: const [
+            DataColumn(label: Text('Item Name')),
+            DataColumn(label: Text('Description')),
+            DataColumn(label: Text('Stock Count'), numeric: true),
+            DataColumn(label: Text('Expiration')),
+            DataColumn(label: Text('View More Details')),
+          ],
+          rows: [
+            for (final item in _mockItems)
+              DataRow(
+                cells: [
+                  DataCell(
+                    SizedBox(
+                      width: 180,
+                      child: Text(
+                        item['itemName'] as String,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(
+                      width: 260,
+                      child: Text(
+                        item['description'] as String,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataCell(Text('${item['stockCount']}')),
+                  DataCell(Text(_formatDate(item['expirationDate'] as DateTime))),
+                  DataCell(
+                    TextButton(
+                      onPressed: () {
+                        _showItemDetailsDialog(
+                          context,
+                          itemName: item['itemName'] as String,
+                          description: item['description'] as String,
+                          stockCount: item['stockCount'] as int,
+                          expirationDate: item['expirationDate'] as DateTime,
+                          imageUrl: item['imageUrl'] as String?,
+                        );
+                      },
+                      child: const Text('View details'),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Supply Tracker',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          SegmentedButton<SupplyTrackerView>(
+            segments: const [
+              ButtonSegment<SupplyTrackerView>(
+                value: SupplyTrackerView.cards,
+                label: Text('Card View'),
+                icon: Icon(Icons.grid_view_rounded),
+              ),
+              ButtonSegment<SupplyTrackerView>(
+                value: SupplyTrackerView.table,
+                label: Text('Table View'),
+                icon: Icon(Icons.table_rows_rounded),
+              ),
+            ],
+            selected: <SupplyTrackerView>{_selectedView},
+            onSelectionChanged: (selection) {
+              setState(() {
+                _selectedView = selection.first;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          _selectedView == SupplyTrackerView.cards ? _buildCardsView() : _buildTableView(),
+        ],
+      ),
     );
   }
 }
