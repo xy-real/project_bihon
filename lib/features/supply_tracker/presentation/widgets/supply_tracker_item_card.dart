@@ -43,6 +43,7 @@ class SupplyTrackerItemCard extends StatelessWidget {
     final isExpired = _isExpired();
     final isExpiringSoon = _isExpiringSoon();
     final theme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ShadCard(
       padding: EdgeInsets.zero,
@@ -252,6 +253,13 @@ class SupplyTrackerItemCard extends StatelessWidget {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: onEdit,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.amber.shade900,
+                                    side: BorderSide(
+                                      color: isDark ? Colors.amber.shade200 : Colors.amber.shade300,
+                                    ),
+                                    backgroundColor: isDark ? Colors.amber.shade200 : Colors.amber.shade100,
+                                  ),
                                   icon: const Icon(Icons.edit_outlined, size: 16),
                                   label: const Text('Edit'),
                                 ),
@@ -262,6 +270,12 @@ class SupplyTrackerItemCard extends StatelessWidget {
                               Expanded(
                                 child: FilledButton.tonalIcon(
                                   onPressed: onDelete,
+                                  style: FilledButton.styleFrom(
+                                    foregroundColor:
+                                        isDark ? Colors.red.shade900 : Colors.red.shade800,
+                                    backgroundColor:
+                                        isDark ? Colors.red.shade300 : Colors.red.shade100,
+                                  ),
                                   icon: const Icon(Icons.delete_outline, size: 16),
                                   label: const Text('Delete'),
                                 ),
