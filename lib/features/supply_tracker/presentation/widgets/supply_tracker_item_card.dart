@@ -9,6 +9,8 @@ class SupplyTrackerItemCard extends StatelessWidget {
   final DateTime expirationDate;
   final String? imageUrl;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const SupplyTrackerItemCard({
     super.key,
@@ -18,6 +20,8 @@ class SupplyTrackerItemCard extends StatelessWidget {
     required this.expirationDate,
     this.imageUrl,
     this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   String _formatDate(DateTime date) {
@@ -240,6 +244,31 @@ class SupplyTrackerItemCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                      if (onEdit != null || onDelete != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            if (onEdit != null)
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: onEdit,
+                                  icon: const Icon(Icons.edit_outlined, size: 16),
+                                  label: const Text('Edit'),
+                                ),
+                              ),
+                            if (onEdit != null && onDelete != null)
+                              const SizedBox(width: 8),
+                            if (onDelete != null)
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: onDelete,
+                                  icon: const Icon(Icons.delete_outline, size: 16),
+                                  label: const Text('Delete'),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

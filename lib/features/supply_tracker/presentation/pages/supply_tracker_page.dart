@@ -62,14 +62,22 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  void _showItemDetailsDialog(
-    BuildContext context, {
-    required String itemName,
-    required String description,
-    required int stockCount,
-    required DateTime expirationDate,
-    String? imageUrl,
-  }) {
+  void _handleEdit(Map<String, dynamic> item) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Edit tapped: ${item['itemName']}')),
+    );
+  }
+
+  void _handleDelete(Map<String, dynamic> item) {
+    setState(() {
+      _mockItems.remove(item);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Deleted: ${item['itemName']}')),
+    );
+  }
+
+  void _showItemDetailsDialog(BuildContext context, {required Map<String, dynamic> item}) {
     showDialog<void>(
       context: context,
       builder: (context) {
@@ -80,13 +88,21 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: SupplyTrackerItemCard(
-                itemName: itemName,
-                description: description,
-                stockCount: stockCount,
-                expirationDate: expirationDate,
-                imageUrl: imageUrl,
+                itemName: item['itemName'] as String,
+                description: item['description'] as String,
+                stockCount: item['stockCount'] as int,
+                expirationDate: item['expirationDate'] as DateTime,
+                imageUrl: item['imageUrl'] as String?,
                 onTap: () {
                   Navigator.of(context).pop();
+                },
+                onEdit: () {
+                  Navigator.of(context).pop();
+                  _handleEdit(item);
+                },
+                onDelete: () {
+                  Navigator.of(context).pop();
+                  _handleDelete(item);
                 },
               ),
             ),
@@ -118,15 +134,10 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   expirationDate: item['expirationDate'] as DateTime,
                   imageUrl: item['imageUrl'] as String?,
                   onTap: () {
-                    _showItemDetailsDialog(
-                      context,
-                      itemName: item['itemName'] as String,
-                      description: item['description'] as String,
-                      stockCount: item['stockCount'] as int,
-                      expirationDate: item['expirationDate'] as DateTime,
-                      imageUrl: item['imageUrl'] as String?,
-                    );
+                    _showItemDetailsDialog(context, item: item);
                   },
+                  onEdit: () => _handleEdit(item),
+                  onDelete: () => _handleDelete(item),
                 ),
               ),
           ],
@@ -181,14 +192,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   DataCell(
                     TextButton(
                       onPressed: () {
-                        _showItemDetailsDialog(
-                          context,
-                          itemName: item['itemName'] as String,
-                          description: item['description'] as String,
-                          stockCount: item['stockCount'] as int,
-                          expirationDate: item['expirationDate'] as DateTime,
-                          imageUrl: item['imageUrl'] as String?,
-                        );
+                        _showItemDetailsDialog(context, item: item);
                       },
                       child: const Text('View details'),
                     ),
