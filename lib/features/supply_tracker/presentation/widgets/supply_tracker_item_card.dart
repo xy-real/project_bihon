@@ -7,6 +7,7 @@ class SupplyTrackerItemCard extends StatelessWidget {
   final String description;
   final int stockCount;
   final DateTime expirationDate;
+  final String? imageUrl;
   final VoidCallback? onTap;
 
   const SupplyTrackerItemCard({
@@ -15,6 +16,7 @@ class SupplyTrackerItemCard extends StatelessWidget {
     required this.description,
     required this.stockCount,
     required this.expirationDate,
+    this.imageUrl,
     this.onTap,
   });
 
@@ -39,127 +41,207 @@ class SupplyTrackerItemCard extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
 
     return ShadCard(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final widthScale = (constraints.maxWidth / 320).clamp(0.86, 1.08);
-            final titleSize = 16.0 * widthScale;
-            final descriptionSize = 13.0 * widthScale;
-            final labelSize = 11.0 * widthScale;
-            final valueSize = 14.0 * widthScale;
-            final statusSize = 10.0 * widthScale;
-            final iconSize = 16.0 * widthScale;
-            final verticalGap = 8.0 * widthScale;
+            final isCompact = constraints.maxWidth < 270;
+            final imageAspectRatio = isCompact ? 4 / 3 : 16 / 9;
+            final iconSize = isCompact ? 12.0 : 13.0;
+            final titleSize = isCompact ? 12.0 : 13.0;
+            final descSize = isCompact ? 10.0 : 11.0;
+            final labelSize = isCompact ? 8.0 : 9.0;
+            final valueSize = isCompact ? 10.0 : 11.0;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        itemName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.titleMedium?.copyWith(
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                        ),
-                      ),
+                GestureDetector(
+                  onTap: onTap,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
                     ),
-                    if (isExpired || isExpiringSoon) ...[
-                      SizedBox(width: 8 * widthScale),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8 * widthScale,
-                          vertical: 4 * widthScale,
-                        ),
+                    child: AspectRatio(
+                      aspectRatio: imageAspectRatio,
+                      child: Container(
                         decoration: BoxDecoration(
-                          color:
-                              isExpired ? Colors.red.shade100 : Colors.orange.shade100,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          isExpired ? 'Expired' : 'Expiring soon',
-                          style: theme.labelSmall?.copyWith(
-                            fontSize: statusSize,
-                            fontWeight: FontWeight.w700,
-                            color: isExpired
-                                ? Colors.red.shade700
-                                : Colors.orange.shade700,
+                          color: Colors.grey.shade200,
+                          border: Border(
+                            bottom: BorderSide(color: Colors.grey.shade300, width: 0.5),
                           ),
                         ),
+                        child: imageUrl != null
+                            ? Image.network(
+                                imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildImagePlaceholder(context, iconSize);
+                                },
+                              )
+                            : _buildImagePlaceholder(context, iconSize),
                       ),
-                    ],
-                  ],
-                ),
-                SizedBox(height: verticalGap),
-                Text(
-                  description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.bodyMedium?.copyWith(
-                    fontSize: descriptionSize,
-                    height: 1.25,
-                    color: Colors.grey.shade700,
+                    ),
                   ),
                 ),
-                SizedBox(height: 12 * widthScale),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _InfoGroup(
-                        icon: lucide.LucideIcons.package,
-                        iconSize: iconSize,
-                        iconColor: Colors.grey.shade600,
-                        label: 'Stock',
-                        value: '$stockCount items',
-                        labelStyle: theme.labelSmall?.copyWith(
-                          fontSize: labelSize,
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              itemName,
+                              maxLines: isCompact ? 2 : 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: titleSize,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                          if (isExpired || isExpiringSoon) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: isExpired ? Colors.red.shade100 : Colors.orange.shade100,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Text(
+                                isExpired ? 'Exp' : 'Soon',
+                                style: theme.labelSmall?.copyWith(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700,
+                                  color: isExpired ? Colors.red.shade700 : Colors.orange.shade700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        maxLines: isCompact ? 2 : 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.labelSmall?.copyWith(
+                          fontSize: descSize,
+                          height: 1.2,
                           color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        valueStyle: theme.bodyMedium?.copyWith(
-                          fontSize: valueSize,
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                    SizedBox(width: 12 * widthScale),
-                    Expanded(
-                      child: _InfoGroup(
-                        icon: lucide.LucideIcons.calendar,
-                        iconSize: iconSize,
-                        iconColor: isExpired
-                            ? Colors.red.shade600
-                            : isExpiringSoon
-                                ? Colors.orange.shade600
-                                : Colors.grey.shade600,
-                        label: 'Expires',
-                        value: _formatDate(expirationDate),
-                        labelStyle: theme.labelSmall?.copyWith(
-                          fontSize: labelSize,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w600,
+                      const SizedBox(height: 6),
+                      if (isCompact)
+                        Column(
+                          children: [
+                            _CompactInfoGroup(
+                              icon: lucide.LucideIcons.package,
+                              iconSize: iconSize,
+                              iconColor: Colors.grey.shade600,
+                              label: 'Stock',
+                              value: '$stockCount',
+                              labelStyle: theme.labelSmall?.copyWith(
+                                fontSize: labelSize,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              valueStyle: theme.labelSmall?.copyWith(
+                                fontSize: valueSize,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _CompactInfoGroup(
+                              icon: lucide.LucideIcons.calendar,
+                              iconSize: iconSize,
+                              iconColor: isExpired
+                                  ? Colors.red.shade600
+                                  : isExpiringSoon
+                                      ? Colors.orange.shade600
+                                      : Colors.grey.shade600,
+                              label: 'Date',
+                              value: _formatDate(expirationDate).split('-').last,
+                              labelStyle: theme.labelSmall?.copyWith(
+                                fontSize: labelSize,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              valueStyle: theme.labelSmall?.copyWith(
+                                fontSize: valueSize,
+                                fontWeight: FontWeight.w700,
+                                color: isExpired
+                                    ? Colors.red.shade600
+                                    : isExpiringSoon
+                                        ? Colors.orange.shade600
+                                        : null,
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _CompactInfoGroup(
+                                icon: lucide.LucideIcons.package,
+                                iconSize: iconSize,
+                                iconColor: Colors.grey.shade600,
+                                label: 'Stock',
+                                value: '$stockCount',
+                                labelStyle: theme.labelSmall?.copyWith(
+                                  fontSize: labelSize,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                valueStyle: theme.labelSmall?.copyWith(
+                                  fontSize: valueSize,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: _CompactInfoGroup(
+                                icon: lucide.LucideIcons.calendar,
+                                iconSize: iconSize,
+                                iconColor: isExpired
+                                    ? Colors.red.shade600
+                                    : isExpiringSoon
+                                        ? Colors.orange.shade600
+                                        : Colors.grey.shade600,
+                                label: 'Date',
+                                value: _formatDate(expirationDate).split('-').last,
+                                labelStyle: theme.labelSmall?.copyWith(
+                                  fontSize: labelSize,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                valueStyle: theme.labelSmall?.copyWith(
+                                  fontSize: valueSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: isExpired
+                                      ? Colors.red.shade600
+                                      : isExpiringSoon
+                                          ? Colors.orange.shade600
+                                          : null,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        valueStyle: theme.bodyMedium?.copyWith(
-                          fontSize: valueSize,
-                          fontWeight: FontWeight.w700,
-                          color: isExpired
-                              ? Colors.red.shade600
-                              : isExpiringSoon
-                                  ? Colors.orange.shade600
-                                  : null,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             );
@@ -168,9 +250,32 @@ class SupplyTrackerItemCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildImagePlaceholder(BuildContext context, double iconSize) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            lucide.LucideIcons.image,
+            size: iconSize * 2.5,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No image',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.grey.shade500,
+                  fontWeight: FontWeight.w500,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _InfoGroup extends StatelessWidget {
+class _CompactInfoGroup extends StatelessWidget {
   final IconData icon;
   final double iconSize;
   final Color iconColor;
@@ -179,7 +284,7 @@ class _InfoGroup extends StatelessWidget {
   final TextStyle? labelStyle;
   final TextStyle? valueStyle;
 
-  const _InfoGroup({
+  const _CompactInfoGroup({
     required this.icon,
     required this.iconSize,
     required this.iconColor,
@@ -192,16 +297,16 @@ class _InfoGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, size: iconSize, color: iconColor),
-        const SizedBox(width: 6),
+        const SizedBox(width: 3),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: labelStyle),
-              const SizedBox(height: 2),
               Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: valueStyle),
             ],
           ),

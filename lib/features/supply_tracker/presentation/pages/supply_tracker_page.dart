@@ -45,39 +45,39 @@ class SupplyTrackerPage extends StatelessWidget {
       },
     ];
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = screenWidth > 900 ? 3 : screenWidth > 600 ? 2 : 1;
-    final childAspectRatio = screenWidth > 900
-      ? 1.35
-      : screenWidth > 600
-        ? 1.18
-        : 1.55;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 1000 ? 3 : width >= 640 ? 2 : 1;
+        final gap = 16.0;
+        final cardWidth = (width - (gap * (columns - 1))) / columns;
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          childAspectRatio: childAspectRatio,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: mockItems.length,
-        itemBuilder: (context, index) {
-          final item = mockItems[index];
-          return SupplyTrackerItemCard(
-            itemName: item['itemName'] as String,
-            description: item['description'] as String,
-            stockCount: item['stockCount'] as int,
-            expirationDate: item['expirationDate'] as DateTime,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Tapped: ${item['itemName']}')),
-              );
-            },
-          );
-        },
-      ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final item in mockItems)
+                SizedBox(
+                  width: cardWidth,
+                  child: SupplyTrackerItemCard(
+                    itemName: item['itemName'] as String,
+                    description: item['description'] as String,
+                    stockCount: item['stockCount'] as int,
+                    expirationDate: item['expirationDate'] as DateTime,
+                    imageUrl: null,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Tapped: ${item['itemName']}')),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
