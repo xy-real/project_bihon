@@ -63,8 +63,46 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   }
 
   void _handleEdit(Map<String, dynamic> item) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Edit tapped: ${item['itemName']}')),
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SupplyTrackerEditCard(
+                initialName: item['itemName'] as String,
+                initialDescription: item['description'] as String,
+                initialStockCount: item['stockCount'] as int,
+                initialExpirationDate: item['expirationDate'] as DateTime,
+                onCancel: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                onSave: ({
+                  required String itemName,
+                  required String description,
+                  required int stockCount,
+                  required DateTime expirationDate,
+                }) {
+                  setState(() {
+                    item['itemName'] = itemName;
+                    item['description'] = description;
+                    item['stockCount'] = stockCount;
+                    item['expirationDate'] = expirationDate;
+                  });
+
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Updated: ${item['itemName']}')),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
