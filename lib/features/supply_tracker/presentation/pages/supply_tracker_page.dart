@@ -10,6 +10,14 @@ import 'package:project_bihon/main.dart' show getLocalNotificationService, getSu
 
 enum SupplyTrackerView { cards, table }
 
+enum SupplySortOption {
+  expirationSoonest,
+  quantityLowToHigh,
+  quantityHighToLow,
+  nameAToZ,
+  categoryAToZ,
+}
+
 class SupplyTrackerPage extends StatefulWidget {
   const SupplyTrackerPage({super.key});
 
@@ -20,6 +28,7 @@ class SupplyTrackerPage extends StatefulWidget {
 class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   SupplyTrackerView _selectedView = SupplyTrackerView.table;
   String _selectedCategoryFilter = 'All';
+  SupplySortOption _selectedSortOption = SupplySortOption.expirationSoonest;
   late SupplyRepository _repository;
   late LocalNotificationService _notificationService;
 
@@ -447,6 +456,40 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
+  String _sortLabel(SupplySortOption option) {
+    switch (option) {
+      case SupplySortOption.expirationSoonest:
+        return 'Expiration (Soonest)';
+      case SupplySortOption.quantityLowToHigh:
+        return 'Quantity (Low to High)';
+      case SupplySortOption.quantityHighToLow:
+        return 'Quantity (High to Low)';
+      case SupplySortOption.nameAToZ:
+        return 'Name (A to Z)';
+      case SupplySortOption.categoryAToZ:
+        return 'Category (A to Z)';
+    }
+  }
+
+  List<SupplyItem> _sortItems(List<SupplyItem> items) {
+    final sorted = List<SupplyItem>.from(items);
+
+    switch (_selectedSortOption) {
+      case SupplySortOption.expirationSoonest:
+        sorted.sort((a, b) => a.expirationDate.compareTo(b.expirationDate));
+      case SupplySortOption.quantityLowToHigh:
+        sorted.sort((a, b) => a.quantity.compareTo(b.quantity));
+      case SupplySortOption.quantityHighToLow:
+        sorted.sort((a, b) => b.quantity.compareTo(a.quantity));
+      case SupplySortOption.nameAToZ:
+        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      case SupplySortOption.categoryAToZ:
+        sorted.sort((a, b) => a.category.toLowerCase().compareTo(b.category.toLowerCase()));
+    }
+
+    return sorted;
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<Box<SupplyItem>>(
@@ -456,6 +499,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
         final filteredItems = _selectedCategoryFilter == 'All'
             ? items
             : items.where((item) => item.category == _selectedCategoryFilter).toList();
+        final sortedItems = _sortItems(filteredItems);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -496,10 +540,46 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
               ),
               const SizedBox(height: 12),
               _buildCategoryFilterChips(items),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    'Sort by:',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<SupplySortOption>(
+                      value: _selectedSortOption,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                      items: SupplySortOption.values
+                          .map(
+                            (option) => DropdownMenuItem<SupplySortOption>(
+                              value: option,
+                              child: Text(_sortLabel(option)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+
+                        setState(() {
+                          _selectedSortOption = value;
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               _selectedView == SupplyTrackerView.cards
-                  ? _buildCardsView(filteredItems)
-                  : _buildTableView(filteredItems),
+                  ? _buildCardsView(sortedItems)
+                  : _buildTableView(sortedItems),
             ],
           ),
         );
