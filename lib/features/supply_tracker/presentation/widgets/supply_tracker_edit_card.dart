@@ -3,6 +3,9 @@ import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SupplyTrackerEditCard extends StatefulWidget {
+  final String title;
+  final String descriptionText;
+  final String saveButtonLabel;
   final String initialName;
   final String initialDescription;
   final int initialStockCount;
@@ -17,6 +20,9 @@ class SupplyTrackerEditCard extends StatefulWidget {
 
   const SupplyTrackerEditCard({
     super.key,
+    this.title = 'Edit Supply Item',
+    this.descriptionText = 'Update item details and save your changes.',
+    this.saveButtonLabel = 'Save Changes',
     required this.initialName,
     required this.initialDescription,
     required this.initialStockCount,
@@ -89,8 +95,8 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
   @override
   Widget build(BuildContext context) {
     return ShadCard(
-      title: const Text('Edit Supply Item'),
-      description: const Text('Update item details and save your changes.'),
+      title: Text(widget.title),
+      description: Text(widget.descriptionText),
       child: Form(
         key: _formKey,
         child: Column(
@@ -166,7 +172,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
                     onPressed: _submit,
                     variant: AppButtonVariant.primary,
                     expands: true,
-                    child: const Text('Save Changes'),
+                    child: Text(widget.saveButtonLabel),
                   ),
                 ),
               ],

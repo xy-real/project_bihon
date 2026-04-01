@@ -90,6 +90,65 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  Future<void> _handleAddItem() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+          ),
+          child: SafeArea(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: SupplyTrackerEditCard(
+                title: 'Add Supply Item',
+                descriptionText: 'Create a new supply entry for your inventory.',
+                saveButtonLabel: 'Add Item',
+                initialName: '',
+                initialDescription: '',
+                initialStockCount: 0,
+                initialExpirationDate: DateTime.now().add(const Duration(days: 30)),
+                onCancel: () {
+                  Navigator.of(sheetContext).pop();
+                },
+                onSave: ({
+                  required String itemName,
+                  required String description,
+                  required int stockCount,
+                  required DateTime expirationDate,
+                }) async {
+                  const uuid = Uuid();
+                  final newItem = SupplyItem(
+                    id: uuid.v4(),
+                    name: itemName,
+                    category: description,
+                    quantity: stockCount,
+                    expirationDate: expirationDate,
+                  );
+
+                  await _repository.addItem(newItem);
+                  await _notificationService.scheduleSupplyExpirationReminder(newItem);
+
+                  if (mounted) {
+                    Navigator.of(sheetContext).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Added: ${newItem.name}')),
+                    );
+                  }
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _handleEdit(SupplyItem item, int index) {
     showDialog<void>(
       context: context,
@@ -401,6 +460,13 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     _selectedView = selection.first;
                   });
                 },
+              ),
+              const SizedBox(height: 12),
+              AppButton(
+                onPressed: _handleAddItem,
+                variant: AppButtonVariant.primary,
+                leading: const Icon(Icons.add_circle_outline, size: 16),
+                child: const Text('Add Item'),
               ),
               const SizedBox(height: 16),
               _selectedView == SupplyTrackerView.cards
