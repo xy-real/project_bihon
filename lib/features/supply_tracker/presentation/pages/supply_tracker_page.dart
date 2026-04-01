@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_bihon/features/supply_tracker/presentation/widgets/widgets.dart';
+import 'package:project_bihon/shared/widgets/app_button.dart';
 
 enum SupplyTrackerView { cards, table }
 
@@ -188,7 +189,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 860),
+        constraints: const BoxConstraints(minWidth: 980),
         child: DataTable(
           columnSpacing: 20,
           headingRowHeight: 48,
@@ -238,17 +239,39 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     ),
                   ),
                   DataCell(
-                    IconButton(
-                      tooltip: 'Edit item',
-                      onPressed: () => _handleEdit(item),
-                      icon: const Icon(Icons.edit_outlined),
+                    SizedBox(
+                      width: 84,
+                      child: AppButton(
+                        onPressed: () => _handleEdit(item),
+                        variant: AppButtonVariant.outline,
+                        size: AppButtonSize.small,
+                        expands: true,
+                        lightBackgroundColor: Colors.amber.shade100,
+                        darkBackgroundColor: Colors.amber.shade200,
+                        lightForegroundColor: Colors.amber.shade900,
+                        darkForegroundColor: Colors.amber.shade900,
+                        lightBorderColor: Colors.amber.shade300,
+                        darkBorderColor: Colors.amber.shade200,
+                        leading: const Icon(Icons.edit_outlined, size: 14),
+                        child: const Text('Edit'),
+                      ),
                     ),
                   ),
                   DataCell(
-                    IconButton(
-                      tooltip: 'Delete item',
-                      onPressed: () => _handleDelete(item),
-                      icon: const Icon(Icons.delete_outline),
+                    SizedBox(
+                      width: 92,
+                      child: AppButton(
+                        onPressed: () => _handleDelete(item),
+                        variant: AppButtonVariant.destructive,
+                        size: AppButtonSize.small,
+                        expands: true,
+                        lightBackgroundColor: Colors.red.shade100,
+                        darkBackgroundColor: Colors.red.shade300,
+                        lightForegroundColor: Colors.red.shade800,
+                        darkForegroundColor: Colors.red.shade900,
+                        leading: const Icon(Icons.delete_outline, size: 14),
+                        child: const Text('Delete'),
+                      ),
                     ),
                   ),
                 ],
