@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
+import 'package:project_bihon/features/supply_tracker/data/repositories/supply_repository.dart';
 import 'package:project_bihon/features/supply_tracker/presentation/widgets/widgets.dart';
 import 'package:project_bihon/shared/widgets/app_button.dart';
+import 'package:project_bihon/main.dart' show getSupplyRepository;
 
 enum SupplyTrackerView { cards, table }
 
@@ -13,57 +18,75 @@ class SupplyTrackerPage extends StatefulWidget {
 
 class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   SupplyTrackerView _selectedView = SupplyTrackerView.table;
+  late SupplyRepository _repository;
 
-  final List<Map<String, dynamic>> _mockItems = [
-    {
-      'itemName': 'Medical Masks (N95)',
-      'description': 'High-efficiency respirator masks for medical use',
-      'stockCount': 150,
-      'expirationDate': DateTime(2026, 6, 15),
-      'imageUrl': null,
-    },
-    {
-      'itemName': 'Surgical Gloves',
-      'description': 'Latex-free, sterile surgical gloves',
-      'stockCount': 500,
-      'expirationDate': DateTime(2025, 12, 31),
-      'imageUrl': null,
-    },
-    {
-      'itemName': 'Antiseptic Solution',
-      'description': '70% Isopropyl alcohol antiseptic',
-      'stockCount': 45,
-      'expirationDate': DateTime(2026, 2, 28),
-      'imageUrl': null,
-    },
-    {
-      'itemName': 'First Aid Kit',
-      'description': 'Comprehensive emergency first aid supplies',
-      'stockCount': 12,
-      'expirationDate': DateTime(2026, 9, 10),
-      'imageUrl': null,
-    },
-    {
-      'itemName': 'Bandages & Gauze',
-      'description': 'Sterile medical bandages and gauze pads',
-      'stockCount': 200,
-      'expirationDate': DateTime(2027, 1, 5),
-      'imageUrl': null,
-    },
-    {
-      'itemName': 'Thermometer (Digital)',
-      'description': 'Non-contact infrared digital thermometer',
-      'stockCount': 8,
-      'expirationDate': DateTime(2028, 5, 20),
-      'imageUrl': null,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _repository = getSupplyRepository();
+    _initializeSeedData();
+  }
+
+  /// Initialize seed data if the box is empty
+  Future<void> _initializeSeedData() async {
+    if (_repository.getAllItems().isEmpty) {
+      const uuid = Uuid();
+      final seedItems = [
+        SupplyItem(
+          id: uuid.v4(),
+          name: 'Medical Masks (N95)',
+          category: 'Medical',
+          quantity: 150,
+          expirationDate: DateTime(2026, 6, 15),
+        ),
+        SupplyItem(
+          id: uuid.v4(),
+          name: 'Surgical Gloves',
+          category: 'Medical',
+          quantity: 500,
+          expirationDate: DateTime(2025, 12, 31),
+        ),
+        SupplyItem(
+          id: uuid.v4(),
+          name: 'Antiseptic Solution',
+          category: 'Medical',
+          quantity: 45,
+          expirationDate: DateTime(2026, 2, 28),
+        ),
+        SupplyItem(
+          id: uuid.v4(),
+          name: 'First Aid Kit',
+          category: 'Medical',
+          quantity: 12,
+          expirationDate: DateTime(2026, 9, 10),
+        ),
+        SupplyItem(
+          id: uuid.v4(),
+          name: 'Bandages & Gauze',
+          category: 'Medical',
+          quantity: 200,
+          expirationDate: DateTime(2027, 1, 5),
+        ),
+        SupplyItem(
+          id: uuid.v4(),
+          name: 'Thermometer (Digital)',
+          category: 'Medical',
+          quantity: 8,
+          expirationDate: DateTime(2028, 5, 20),
+        ),
+      ];
+
+      for (final item in seedItems) {
+        await _repository.addItem(item);
+      }
+    }
+  }
 
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  void _handleEdit(Map<String, dynamic> item) {
+  void _handleEdit(SupplyItem item, int index) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -74,10 +97,10 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: SupplyTrackerEditCard(
-                initialName: item['itemName'] as String,
-                initialDescription: item['description'] as String,
-                initialStockCount: item['stockCount'] as int,
-                initialExpirationDate: item['expirationDate'] as DateTime,
+                initialName: item.name,
+                initialDescription: item.category,
+                initialStockCount: item.quantity,
+                initialExpirationDate: item.expirationDate,
                 onCancel: () {
                   Navigator.of(dialogContext).pop();
                 },
@@ -86,18 +109,23 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   required String description,
                   required int stockCount,
                   required DateTime expirationDate,
-                }) {
-                  setState(() {
-                    item['itemName'] = itemName;
-                    item['description'] = description;
-                    item['stockCount'] = stockCount;
-                    item['expirationDate'] = expirationDate;
-                  });
-
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Updated: ${item['itemName']}')),
+                }) async {
+                  final updatedItem = SupplyItem(
+                    id: item.id,
+                    name: itemName,
+                    category: description,
+                    quantity: stockCount,
+                    expirationDate: expirationDate,
                   );
+
+                  await _repository.updateItem(index, updatedItem);
+
+                  if (mounted) {
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Updated: ${updatedItem.name}')),
+                    );
+                  }
                 },
               ),
             ),
@@ -107,16 +135,16 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
-  void _handleDelete(Map<String, dynamic> item) {
-    setState(() {
-      _mockItems.remove(item);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleted: ${item['itemName']}')),
-    );
+  Future<void> _handleDelete(SupplyItem item, int index) async {
+    await _repository.deleteItem(index);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deleted: ${item.name}')),
+      );
+    }
   }
 
-  void _showItemDetailsDialog(BuildContext context, {required Map<String, dynamic> item}) {
+  void _showItemDetailsDialog(BuildContext context, {required SupplyItem item, required int index}) {
     showDialog<void>(
       context: context,
       builder: (context) {
@@ -127,21 +155,21 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: SupplyTrackerItemCard(
-                itemName: item['itemName'] as String,
-                description: item['description'] as String,
-                stockCount: item['stockCount'] as int,
-                expirationDate: item['expirationDate'] as DateTime,
-                imageUrl: item['imageUrl'] as String?,
+                itemName: item.name,
+                description: item.category,
+                stockCount: item.quantity,
+                expirationDate: item.expirationDate,
+                imageUrl: null,
                 onTap: () {
                   Navigator.of(context).pop();
                 },
                 onEdit: () {
                   Navigator.of(context).pop();
-                  _handleEdit(item);
+                  _handleEdit(item, index);
                 },
                 onDelete: () {
                   Navigator.of(context).pop();
-                  _handleDelete(item);
+                  _handleDelete(item, index);
                 },
               ),
             ),
@@ -151,7 +179,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
-  Widget _buildCardsView() {
+  Widget _buildCardsView(List<SupplyItem> items) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -163,20 +191,20 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (final item in _mockItems)
+            for (int i = 0; i < items.length; i++)
               SizedBox(
                 width: cardWidth,
                 child: SupplyTrackerItemCard(
-                  itemName: item['itemName'] as String,
-                  description: item['description'] as String,
-                  stockCount: item['stockCount'] as int,
-                  expirationDate: item['expirationDate'] as DateTime,
-                  imageUrl: item['imageUrl'] as String?,
+                  itemName: items[i].name,
+                  description: items[i].category,
+                  stockCount: items[i].quantity,
+                  expirationDate: items[i].expirationDate,
+                  imageUrl: null,
                   onTap: () {
-                    _showItemDetailsDialog(context, item: item);
+                    _showItemDetailsDialog(context, item: items[i], index: i);
                   },
-                  onEdit: () => _handleEdit(item),
-                  onDelete: () => _handleDelete(item),
+                  onEdit: () => _handleEdit(items[i], i),
+                  onDelete: () => _handleDelete(items[i], i),
                 ),
               ),
           ],
@@ -185,7 +213,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
-  Widget _buildTableView() {
+  Widget _buildTableView(List<SupplyItem> items) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
@@ -197,22 +225,22 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
           dataRowMaxHeight: 72,
           columns: const [
             DataColumn(label: Text('Item Name')),
-            DataColumn(label: Text('Description')),
-            DataColumn(label: Text('Stock Count'), numeric: true),
+            DataColumn(label: Text('Category')),
+            DataColumn(label: Text('Quantity'), numeric: true),
             DataColumn(label: Text('Expiration')),
             DataColumn(label: Text('View More Details')),
             DataColumn(label: Text('Edit')),
             DataColumn(label: Text('Delete')),
           ],
           rows: [
-            for (final item in _mockItems)
+            for (int i = 0; i < items.length; i++)
               DataRow(
                 cells: [
                   DataCell(
                     SizedBox(
                       width: 180,
                       child: Text(
-                        item['itemName'] as String,
+                        items[i].name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -220,20 +248,20 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   ),
                   DataCell(
                     SizedBox(
-                      width: 260,
+                      width: 120,
                       child: Text(
-                        item['description'] as String,
-                        maxLines: 2,
+                        items[i].category,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
-                  DataCell(Text('${item['stockCount']}')),
-                  DataCell(Text(_formatDate(item['expirationDate'] as DateTime))),
+                  DataCell(Text('${items[i].quantity}')),
+                  DataCell(Text(_formatDate(items[i].expirationDate))),
                   DataCell(
                     AppButton(
                       onPressed: () {
-                        _showItemDetailsDialog(context, item: item);
+                        _showItemDetailsDialog(context, item: items[i], index: i);
                       },
                       variant: AppButtonVariant.ghost,
                       size: AppButtonSize.small,
@@ -244,7 +272,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     SizedBox(
                       width: 84,
                       child: AppButton(
-                        onPressed: () => _handleEdit(item),
+                        onPressed: () => _handleEdit(items[i], i),
                         variant: AppButtonVariant.outline,
                         size: AppButtonSize.small,
                         expands: true,
@@ -263,7 +291,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     SizedBox(
                       width: 92,
                       child: AppButton(
-                        onPressed: () => _handleDelete(item),
+                        onPressed: () => _handleDelete(items[i], i),
                         variant: AppButtonVariant.destructive,
                         size: AppButtonSize.small,
                         expands: true,
@@ -286,40 +314,49 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Supply Tracker',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
-          SegmentedButton<SupplyTrackerView>(
-            segments: const [
-              ButtonSegment<SupplyTrackerView>(
-                value: SupplyTrackerView.cards,
-                label: Text('Card View'),
-                icon: Icon(Icons.grid_view_rounded),
+    return ValueListenableBuilder<Box<SupplyItem>>(
+      valueListenable: _repository.getItemsListenable(),
+      builder: (context, box, _) {
+        final items = box.values.toList();
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Supply Tracker',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-              ButtonSegment<SupplyTrackerView>(
-                value: SupplyTrackerView.table,
-                label: Text('Table View'),
-                icon: Icon(Icons.table_rows_rounded),
+              const SizedBox(height: 12),
+              SegmentedButton<SupplyTrackerView>(
+                segments: const [
+                  ButtonSegment<SupplyTrackerView>(
+                    value: SupplyTrackerView.cards,
+                    label: Text('Card View'),
+                    icon: Icon(Icons.grid_view_rounded),
+                  ),
+                  ButtonSegment<SupplyTrackerView>(
+                    value: SupplyTrackerView.table,
+                    label: Text('Table View'),
+                    icon: Icon(Icons.table_rows_rounded),
+                  ),
+                ],
+                selected: <SupplyTrackerView>{_selectedView},
+                onSelectionChanged: (selection) {
+                  setState(() {
+                    _selectedView = selection.first;
+                  });
+                },
               ),
+              const SizedBox(height: 16),
+              _selectedView == SupplyTrackerView.cards
+                  ? _buildCardsView(items)
+                  : _buildTableView(items),
             ],
-            selected: <SupplyTrackerView>{_selectedView},
-            onSelectionChanged: (selection) {
-              setState(() {
-                _selectedView = selection.first;
-              });
-            },
           ),
-          const SizedBox(height: 16),
-          _selectedView == SupplyTrackerView.cards ? _buildCardsView() : _buildTableView(),
-        ],
-      ),
+        );
+      },
     );
   }
 }

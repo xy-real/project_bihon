@@ -1,9 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
+import 'features/supply_tracker/data/models/supply_item.dart';
+import 'features/supply_tracker/data/repositories/supply_repository.dart';
 import 'shared/shared.dart';
 
-void main() {
+late SupplyRepository _supplyRepository;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+
+  // Register Hive adapters
+  Hive.registerAdapter(SupplyItemAdapter());
+
+  // Initialize SupplyRepository
+  _supplyRepository = SupplyRepository();
+  await _supplyRepository.initBox();
+
   runApp(const MyApp());
 }
 
@@ -70,3 +87,6 @@ class HomePage extends StatelessWidget {
     );
   }
 }
+
+/// Global getter to access the SupplyRepository from anywhere in the app.
+SupplyRepository getSupplyRepository() => _supplyRepository;
