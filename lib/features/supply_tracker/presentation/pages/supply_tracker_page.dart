@@ -100,6 +100,10 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  int _findItemIndexById(String itemId) {
+    return _repository.getAllItems().indexWhere((item) => item.id == itemId);
+  }
+
   Future<void> _handleAddItem() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -159,7 +163,17 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
-  void _handleEdit(SupplyItem item, int index) {
+  void _handleEdit(SupplyItem item) {
+    final index = _findItemIndexById(item.id);
+    if (index == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item not found. Please refresh and try again.')),
+        );
+      }
+      return;
+    }
+
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -210,13 +224,140 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
-  Future<void> _handleDelete(SupplyItem item, int index) async {
+  Future<void> _handleDelete(SupplyItem item) async {
+    final index = _findItemIndexById(item.id);
+    if (index == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item not found. Please refresh and try again.')),
+        );
+      }
+      return;
+    }
+
     await _repository.deleteItem(index);
     await _notificationService.cancelSupplyExpirationReminder(item.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Deleted: ${item.name}')),
       );
+    }
+  }
+
+  Future<void> _handleMarkReplaced(SupplyItem item) async {
+    final index = _findItemIndexById(item.id);
+    if (index == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item not found. Please refresh and try again.')),
+        );
+      }
+      return;
+    }
+
+    await _repository.markItemReplaced(index);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Marked replaced: ${item.name}')),
+      );
+    }
+  }
+
+  Future<void> _handleDuplicate(SupplyItem item) async {
+    const uuid = Uuid();
+    final newId = uuid.v4();
+    final index = _findItemIndexById(item.id);
+    if (index == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item not found. Please refresh and try again.')),
+        );
+      }
+      return;
+    }
+
+    await _repository.duplicateItem(index, newId);
+
+    // Schedule notification for the duplicated item
+    final items = _repository.getAllItems();
+    final duplicatedItem = items.lastWhere((i) => i.id == newId, orElse: () => item);
+    await _notificationService.scheduleSupplyExpirationReminder(duplicatedItem);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Duplicated: ${item.name}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleAddStock(SupplyItem item) async {
+    if (!mounted) return;
+
+    final index = _findItemIndexById(item.id);
+    if (index == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item not found. Please refresh and try again.')),
+        );
+      }
+      return;
+    }
+
+    final qtyController = TextEditingController(text: '1');
+    final quantityToAdd = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Add Stock'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Add quantity to: ${item.name}'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Quantity to add',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final parsed = int.tryParse(qtyController.text.trim());
+                if (parsed == null || parsed <= 0) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Enter a positive quantity.')),
+                  );
+                  return;
+                }
+                Navigator.of(dialogContext).pop(parsed);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+    qtyController.dispose();
+
+    if (quantityToAdd != null && quantityToAdd > 0) {
+      await _repository.addStock(index, quantityToAdd);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added $quantityToAdd stock to: ${item.name}')),
+        );
+      }
     }
   }
 
@@ -236,17 +377,29 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 stockCount: item.quantity,
                 expirationDate: item.expirationDate,
                 imageUrl: null,
-                                supplyItem: item,
+                supplyItem: item,
                 onTap: () {
                   Navigator.of(context).pop();
                 },
                 onEdit: () {
                   Navigator.of(context).pop();
-                  _handleEdit(item, index);
+                  _handleEdit(item);
                 },
                 onDelete: () {
                   Navigator.of(context).pop();
-                  _handleDelete(item, index);
+                  _handleDelete(item);
+                },
+                onMarkReplaced: () {
+                  Navigator.of(context).pop();
+                  _handleMarkReplaced(item);
+                },
+                onDuplicate: () {
+                  Navigator.of(context).pop();
+                  _handleDuplicate(item);
+                },
+                onAddStock: () {
+                  Navigator.of(context).pop();
+                  _handleAddStock(item);
                 },
               ),
             ),
@@ -276,13 +429,16 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   description: items[i].category,
                   stockCount: items[i].quantity,
                   expirationDate: items[i].expirationDate,
-                                    supplyItem: items[i],
+                  supplyItem: items[i],
                   imageUrl: null,
                   onTap: () {
                     _showItemDetailsDialog(context, item: items[i], index: i);
                   },
-                  onEdit: () => _handleEdit(items[i], i),
-                  onDelete: () => _handleDelete(items[i], i),
+                  onEdit: () => _handleEdit(items[i]),
+                  onDelete: () => _handleDelete(items[i]),
+                  onMarkReplaced: () => _handleMarkReplaced(items[i]),
+                  onDuplicate: () => _handleDuplicate(items[i]),
+                  onAddStock: () => _handleAddStock(items[i]),
                 ),
               ),
           ],
@@ -300,7 +456,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
           columnSpacing: 20,
           headingRowHeight: 48,
           dataRowMinHeight: 56,
-          dataRowMaxHeight: 72,
+          dataRowMaxHeight: 88,
           columns: const [
             DataColumn(label: Text('Item Name')),
             DataColumn(label: Text('Category')),
@@ -309,6 +465,9 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
             DataColumn(label: Text('View More Details')),
             DataColumn(label: Text('Edit')),
             DataColumn(label: Text('Delete')),
+            DataColumn(label: Text('Mark Replaced')),
+            DataColumn(label: Text('Duplicate')),
+            DataColumn(label: Text('Add Stock')),
           ],
           rows: [
             for (int i = 0; i < items.length; i++)
@@ -394,7 +553,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     SizedBox(
                       width: 84,
                       child: AppButton(
-                        onPressed: () => _handleEdit(items[i], i),
+                        onPressed: () => _handleEdit(items[i]),
                         variant: AppButtonVariant.outline,
                         size: AppButtonSize.small,
                         expands: true,
@@ -413,7 +572,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     SizedBox(
                       width: 92,
                       child: AppButton(
-                        onPressed: () => _handleDelete(items[i], i),
+                        onPressed: () => _handleDelete(items[i]),
                         variant: AppButtonVariant.destructive,
                         size: AppButtonSize.small,
                         expands: true,
@@ -423,6 +582,63 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                         darkForegroundColor: Colors.red.shade900,
                         leading: const Icon(Icons.delete_outline, size: 14),
                         child: const Text('Delete'),
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(
+                      width: 110,
+                      child: AppButton(
+                        onPressed: () => _handleMarkReplaced(items[i]),
+                        variant: AppButtonVariant.outline,
+                        size: AppButtonSize.small,
+                        expands: true,
+                        lightBackgroundColor: Colors.blue.shade50,
+                        darkBackgroundColor: Colors.blue.shade300,
+                        lightForegroundColor: Colors.blue.shade900,
+                        darkForegroundColor: Colors.blue.shade900,
+                        lightBorderColor: Colors.blue.shade200,
+                        darkBorderColor: Colors.blue.shade200,
+                        leading: const Icon(Icons.check_circle_outline, size: 14),
+                        child: const Text('Replaced'),
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(
+                      width: 100,
+                      child: AppButton(
+                        onPressed: () => _handleDuplicate(items[i]),
+                        variant: AppButtonVariant.outline,
+                        size: AppButtonSize.small,
+                        expands: true,
+                        lightBackgroundColor: Colors.purple.shade50,
+                        darkBackgroundColor: Colors.purple.shade300,
+                        lightForegroundColor: Colors.purple.shade900,
+                        darkForegroundColor: Colors.purple.shade900,
+                        lightBorderColor: Colors.purple.shade200,
+                        darkBorderColor: Colors.purple.shade200,
+                        leading: const Icon(Icons.copy, size: 14),
+                        child: const Text('Duplicate'),
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(
+                      width: 112,
+                      child: AppButton(
+                        onPressed: () => _handleAddStock(items[i]),
+                        variant: AppButtonVariant.outline,
+                        size: AppButtonSize.small,
+                        expands: true,
+                        lightBackgroundColor: Colors.green.shade50,
+                        darkBackgroundColor: Colors.green.shade300,
+                        lightForegroundColor: Colors.green.shade900,
+                        darkForegroundColor: Colors.green.shade900,
+                        lightBorderColor: Colors.green.shade200,
+                        darkBorderColor: Colors.green.shade200,
+                        leading: const Icon(Icons.add_box_outlined, size: 14),
+                        child: const Text('Add Stock'),
                       ),
                     ),
                   ),
