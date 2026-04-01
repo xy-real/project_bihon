@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart' as lucide;
+import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SupplyTrackerItemCard extends StatelessWidget {
@@ -43,7 +44,6 @@ class SupplyTrackerItemCard extends StatelessWidget {
     final isExpired = _isExpired();
     final isExpiringSoon = _isExpiringSoon();
     final theme = Theme.of(context).textTheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ShadCard(
       padding: EdgeInsets.zero,
@@ -251,33 +251,36 @@ class SupplyTrackerItemCard extends StatelessWidget {
                           children: [
                             if (onEdit != null)
                               Expanded(
-                                child: OutlinedButton.icon(
+                                child: AppButton(
                                   onPressed: onEdit,
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.amber.shade900,
-                                    side: BorderSide(
-                                      color: isDark ? Colors.amber.shade200 : Colors.amber.shade300,
-                                    ),
-                                    backgroundColor: isDark ? Colors.amber.shade200 : Colors.amber.shade100,
-                                  ),
-                                  icon: const Icon(Icons.edit_outlined, size: 16),
-                                  label: const Text('Edit'),
+                                  variant: AppButtonVariant.outline,
+                                  size: AppButtonSize.small,
+                                  expands: true,
+                                  lightBackgroundColor: Colors.amber.shade100,
+                                  darkBackgroundColor: Colors.amber.shade200,
+                                  lightForegroundColor: Colors.amber.shade900,
+                                  darkForegroundColor: Colors.amber.shade900,
+                                  lightBorderColor: Colors.amber.shade300,
+                                  darkBorderColor: Colors.amber.shade200,
+                                  leading: const Icon(Icons.edit_outlined, size: 16),
+                                  child: const Text('Edit'),
                                 ),
                               ),
                             if (onEdit != null && onDelete != null)
                               const SizedBox(width: 8),
                             if (onDelete != null)
                               Expanded(
-                                child: FilledButton.tonalIcon(
+                                child: AppButton(
                                   onPressed: onDelete,
-                                  style: FilledButton.styleFrom(
-                                    foregroundColor:
-                                        isDark ? Colors.red.shade900 : Colors.red.shade800,
-                                    backgroundColor:
-                                        isDark ? Colors.red.shade300 : Colors.red.shade100,
-                                  ),
-                                  icon: const Icon(Icons.delete_outline, size: 16),
-                                  label: const Text('Delete'),
+                                  variant: AppButtonVariant.destructive,
+                                  size: AppButtonSize.small,
+                                  expands: true,
+                                  lightBackgroundColor: Colors.red.shade100,
+                                  darkBackgroundColor: Colors.red.shade300,
+                                  lightForegroundColor: Colors.red.shade800,
+                                  darkForegroundColor: Colors.red.shade900,
+                                  leading: const Icon(Icons.delete_outline, size: 16),
+                                  child: const Text('Delete'),
                                 ),
                               ),
                           ],

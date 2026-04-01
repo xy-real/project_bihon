@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SupplyTrackerEditCard extends StatefulWidget {
@@ -140,8 +141,10 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
                 Expanded(
                   child: Text('Expiration Date: ${_formatDate(_expirationDate)}'),
                 ),
-                OutlinedButton(
+                AppButton(
                   onPressed: _pickDate,
+                  variant: AppButtonVariant.outline,
+                  size: AppButtonSize.small,
                   child: const Text('Pick Date'),
                 ),
               ],
@@ -150,15 +153,19 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: AppButton(
                     onPressed: widget.onCancel,
+                    variant: AppButtonVariant.outline,
+                    expands: true,
                     child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: FilledButton(
+                  child: AppButton(
                     onPressed: _submit,
+                    variant: AppButtonVariant.primary,
+                    expands: true,
                     child: const Text('Save Changes'),
                   ),
                 ),
