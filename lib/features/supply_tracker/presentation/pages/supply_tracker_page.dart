@@ -160,6 +160,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 stockCount: item.quantity,
                 expirationDate: item.expirationDate,
                 imageUrl: null,
+                                supplyItem: item,
                 onTap: () {
                   Navigator.of(context).pop();
                 },
@@ -199,6 +200,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   description: items[i].category,
                   stockCount: items[i].quantity,
                   expirationDate: items[i].expirationDate,
+                                    supplyItem: items[i],
                   imageUrl: null,
                   onTap: () {
                     _showItemDetailsDialog(context, item: items[i], index: i);
@@ -257,7 +259,51 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     ),
                   ),
                   DataCell(Text('${items[i].quantity}')),
-                  DataCell(Text(_formatDate(items[i].expirationDate))),
+                  DataCell(
+                    Row(
+                      children: [
+                        Text(
+                          _formatDate(items[i].expirationDate),
+                          style: TextStyle(
+                            color: items[i].isExpired
+                                ? Colors.red.shade600
+                                : items[i].expiresSoon
+                                    ? Colors.orange.shade600
+                                    : Colors.green.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: items[i].isExpired
+                                ? Colors.red.shade100
+                                : items[i].expiresSoon
+                                    ? Colors.orange.shade100
+                                    : Colors.green.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            items[i].isExpired
+                                ? 'Expired'
+                                : items[i].expiresSoon
+                                    ? 'Expiring Soon'
+                                    : 'Good',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: items[i].isExpired
+                                  ? Colors.red.shade700
+                                  : items[i].expiresSoon
+                                      ? Colors.orange.shade700
+                                      : Colors.green.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   DataCell(
                     AppButton(
                       onPressed: () {
