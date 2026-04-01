@@ -231,10 +231,12 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   DataCell(Text('${item['stockCount']}')),
                   DataCell(Text(_formatDate(item['expirationDate'] as DateTime))),
                   DataCell(
-                    TextButton(
+                    AppButton(
                       onPressed: () {
                         _showItemDetailsDialog(context, item: item);
                       },
+                      variant: AppButtonVariant.ghost,
+                      size: AppButtonSize.small,
                       child: const Text('View details'),
                     ),
                   ),
