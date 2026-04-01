@@ -31,11 +31,26 @@ class _MyAppState extends State<MyApp> {
       theme: BihonTheme.light(),
       darkTheme: BihonTheme.dark(),
       home: const LogoSplashScreen(),
-      routes: {
-        '/home': (context) => HomePage(
-              themeMode: _themeMode,
-              onThemeChanged: _onThemeChanged,
-            ),
+      onGenerateRoute: (settings) {
+        if (settings.name == '/home') {
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return HomePage(
+                themeMode: _themeMode,
+                onThemeChanged: _onThemeChanged,
+              );
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          );
+        }
+        return null;
       },
     );
   }

@@ -11,45 +11,59 @@ class LogoSplashScreen extends StatefulWidget {
 class _LogoSplashScreenState extends State<LogoSplashScreen>
     with WidgetsBindingObserver {
   late VideoPlayerController _controller;
-  late Future<void> _initializeVideoFuture;
+  late ValueNotifier<VideoPlayerValue> _videoStateNotifier;
+  bool _navigationTriggered = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _controller = VideoPlayerController.asset('assets/logo_opener.mp4');
-    _initializeVideoFuture = _controller.initialize().then((_) {
-      debugPrint('[SPLASH] Video initialized successfully');
+    _videoStateNotifier = ValueNotifier(VideoPlayerValue(duration: Duration.zero));
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      _controller = VideoPlayerController.asset('assets/logo_opener.mp4');
+      await _controller.initialize();
+
+      if (!mounted) return;
+
+      _controller.addListener(_onVideoStateChanged);
+      _videoStateNotifier.value = _controller.value;
+
+      _controller.play();
+    } catch (e) {
+      debugPrint('[SPLASH] Video initialization failed: $e');
       if (mounted) {
-        setState(() {});
-        _controller.play();
-        _controller.addListener(_onVideoStateChanged);
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted && !_navigationTriggered) {
+            _navigationTriggered = true;
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
+        });
       }
-    }).catchError((error) {
-      debugPrint('[SPLASH] ERROR during initialization: $error');
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    }
   }
 
   void _onVideoStateChanged() {
     if (!mounted) return;
 
-    if (_controller.value.hasError) {
-      debugPrint('[SPLASH] ERROR: ${_controller.value.errorDescription}');
+    _videoStateNotifier.value = _controller.value;
+
+    final isVideoEnded = _controller.value.isInitialized &&
+        _controller.value.position >= _controller.value.duration - const Duration(milliseconds: 100);
+
+    if (isVideoEnded && !_navigationTriggered) {
+      debugPrint('[SPLASH] Video completed, navigating to home');
+      _navigationTriggered = true;
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          debugPrint('[SPLASH] Navigating to HomePage now');
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      });
     }
-
-    if (_controller.value.position >= _controller.value.duration) {
-      debugPrint('[SPLASH] Video playback completed');
-      _navigateToHome();
-    }
-  }
-
-  void _navigateToHome() {
-    if (!mounted) return;
-
-    Navigator.of(context).pushReplacementNamed('/home');
   }
 
   @override
@@ -57,7 +71,9 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
     if (state == AppLifecycleState.paused) {
       _controller.pause();
     } else if (state == AppLifecycleState.resumed) {
-      if (_controller.value.isInitialized && !_controller.value.isPlaying) {
+      if (_controller.value.isInitialized &&
+          !_controller.value.isPlaying &&
+          !_navigationTriggered) {
         _controller.play();
       }
     }
@@ -68,71 +84,45 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
     WidgetsBinding.instance.removeObserver(this);
     _controller.removeListener(_onVideoStateChanged);
     _controller.dispose();
+    _videoStateNotifier.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: FutureBuilder<void>(
-        future: _initializeVideoFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            if (_controller.value.hasError) {
-              debugPrint('[SPLASH] Showing fallback image due to error');
-              return Container(
-                color: Colors.black,
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const SizedBox.expand(
-                        child: ColoredBox(
-                          color: Colors.black,
-                        ),
-                      );
-                    },
-                  ),
+      backgroundColor: Colors.white,
+      body: Center(
+        child: ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: _videoStateNotifier,
+          builder: (context, videoState, _) {
+            if (!videoState.isInitialized) {
+              return const SizedBox.expand(
+                child: ColoredBox(
+                  color: Colors.white,
                 ),
               );
             }
-            return Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  color: Colors.black,
-                  child: Center(
-                    child: AspectRatio(
-                      aspectRatio: _controller.value.aspectRatio,
-                      child: VideoPlayer(_controller),
-                    ),
-                  ),
+
+            if (videoState.hasError) {
+              return const SizedBox.expand(
+                child: ColoredBox(
+                  color: Colors.white,
                 ),
-              ],
-            );
-          } else if (snapshot.hasError) {
-            debugPrint('[SPLASH] Snapshot error: ${snapshot.error}');
+              );
+            }
+
             return Container(
-              color: Colors.black,
-              child: const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              color: Colors.white,
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: videoState.aspectRatio,
+                  child: VideoPlayer(_controller),
                 ),
               ),
             );
-          } else {
-            return Container(
-              color: Colors.black,
-              child: const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-            );
-          }
-        },
+          },
+        ),
       ),
     );
   }
