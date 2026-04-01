@@ -19,6 +19,7 @@ class SupplyTrackerPage extends StatefulWidget {
 
 class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   SupplyTrackerView _selectedView = SupplyTrackerView.table;
+  String _selectedCategoryFilter = 'All';
   late SupplyRepository _repository;
   late LocalNotificationService _notificationService;
 
@@ -424,12 +425,37 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
+  Widget _buildCategoryFilterChips(List<SupplyItem> items) {
+    final categories = items.map((item) => item.category).toSet().toList()..sort();
+    final filters = ['All', ...categories];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final filter in filters)
+          ChoiceChip(
+            label: Text(filter),
+            selected: _selectedCategoryFilter == filter,
+            onSelected: (_) {
+              setState(() {
+                _selectedCategoryFilter = filter;
+              });
+            },
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<Box<SupplyItem>>(
       valueListenable: _repository.getItemsListenable(),
       builder: (context, box, _) {
         final items = box.values.toList();
+        final filteredItems = _selectedCategoryFilter == 'All'
+            ? items
+            : items.where((item) => item.category == _selectedCategoryFilter).toList();
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -468,10 +494,12 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 leading: const Icon(Icons.add_circle_outline, size: 16),
                 child: const Text('Add Item'),
               ),
+              const SizedBox(height: 12),
+              _buildCategoryFilterChips(items),
               const SizedBox(height: 16),
               _selectedView == SupplyTrackerView.cards
-                  ? _buildCardsView(items)
-                  : _buildTableView(items),
+                  ? _buildCardsView(filteredItems)
+                  : _buildTableView(filteredItems),
             ],
           ),
         );
