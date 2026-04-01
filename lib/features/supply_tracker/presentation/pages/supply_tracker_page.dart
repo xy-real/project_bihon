@@ -200,6 +200,8 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
             DataColumn(label: Text('Stock Count'), numeric: true),
             DataColumn(label: Text('Expiration')),
             DataColumn(label: Text('View More Details')),
+            DataColumn(label: Text('Edit')),
+            DataColumn(label: Text('Delete')),
           ],
           rows: [
             for (final item in _mockItems)
@@ -233,6 +235,20 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                         _showItemDetailsDialog(context, item: item);
                       },
                       child: const Text('View details'),
+                    ),
+                  ),
+                  DataCell(
+                    IconButton(
+                      tooltip: 'Edit item',
+                      onPressed: () => _handleEdit(item),
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                  ),
+                  DataCell(
+                    IconButton(
+                      tooltip: 'Delete item',
+                      onPressed: () => _handleDelete(item),
+                      icon: const Icon(Icons.delete_outline),
                     ),
                   ),
                 ],
