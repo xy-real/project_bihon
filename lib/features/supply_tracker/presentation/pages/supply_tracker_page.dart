@@ -110,7 +110,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 descriptionText: 'Create a new supply entry for your inventory.',
                 saveButtonLabel: 'Add Item',
                 initialName: '',
-                initialDescription: '',
+                initialCategory: null,
                 initialStockCount: 0,
                 initialExpirationDate: DateTime.now().add(const Duration(days: 30)),
                 onCancel: () {
@@ -118,7 +118,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 },
                 onSave: ({
                   required String itemName,
-                  required String description,
+                  required String category,
                   required int stockCount,
                   required DateTime expirationDate,
                 }) async {
@@ -126,7 +126,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   final newItem = SupplyItem(
                     id: uuid.v4(),
                     name: itemName,
-                    category: description,
+                    category: category,
                     quantity: stockCount,
                     expirationDate: expirationDate,
                   );
@@ -161,7 +161,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
               padding: const EdgeInsets.all(12),
               child: SupplyTrackerEditCard(
                 initialName: item.name,
-                initialDescription: item.category,
+                initialCategory: item.category,
                 initialStockCount: item.quantity,
                 initialExpirationDate: item.expirationDate,
                 onCancel: () {
@@ -169,14 +169,14 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 },
                 onSave: ({
                   required String itemName,
-                  required String description,
+                  required String category,
                   required int stockCount,
                   required DateTime expirationDate,
                 }) async {
                   final updatedItem = SupplyItem(
                     id: item.id,
                     name: itemName,
-                    category: description,
+                    category: category,
                     quantity: stockCount,
                     expirationDate: expirationDate,
                   );

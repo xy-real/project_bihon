@@ -7,12 +7,12 @@ class SupplyTrackerEditCard extends StatefulWidget {
   final String descriptionText;
   final String saveButtonLabel;
   final String initialName;
-  final String initialDescription;
+  final String? initialCategory;
   final int initialStockCount;
   final DateTime initialExpirationDate;
   final void Function({
     required String itemName,
-    required String description,
+    required String category,
     required int stockCount,
     required DateTime expirationDate,
   }) onSave;
@@ -24,7 +24,7 @@ class SupplyTrackerEditCard extends StatefulWidget {
     this.descriptionText = 'Update item details and save your changes.',
     this.saveButtonLabel = 'Save Changes',
     required this.initialName,
-    required this.initialDescription,
+    this.initialCategory,
     required this.initialStockCount,
     required this.initialExpirationDate,
     required this.onSave,
@@ -36,25 +36,33 @@ class SupplyTrackerEditCard extends StatefulWidget {
 }
 
 class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
+  static const List<String> _categoryOptions = [
+    'Food',
+    'Water',
+    'Medical',
+    'Tools',
+    'Hygiene',
+    'Other',
+  ];
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
-  late final TextEditingController _descriptionController;
   late final TextEditingController _stockController;
   late DateTime _expirationDate;
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
-    _descriptionController = TextEditingController(text: widget.initialDescription);
     _stockController = TextEditingController(text: widget.initialStockCount.toString());
     _expirationDate = widget.initialExpirationDate;
+    _selectedCategory = widget.initialCategory;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
     _stockController.dispose();
     super.dispose();
   }
@@ -86,7 +94,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
     final parsedStock = int.parse(_stockController.text.trim());
     widget.onSave(
       itemName: _nameController.text.trim(),
-      description: _descriptionController.text.trim(),
+      category: _selectedCategory!,
       stockCount: parsedStock,
       expirationDate: _expirationDate,
     );
@@ -114,13 +122,25 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
               },
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 2,
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: const InputDecoration(labelText: 'Category'),
+              items: _categoryOptions
+                  .map(
+                    (category) => DropdownMenuItem<String>(
+                      value: category,
+                      child: Text(category),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                });
+              },
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Description is required.';
+                  return 'Category is required.';
                 }
                 return null;
               },
