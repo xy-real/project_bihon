@@ -5,7 +5,8 @@ import 'package:project_bihon/features/supply_tracker/data/models/supply_item.da
 import 'package:project_bihon/features/supply_tracker/data/repositories/supply_repository.dart';
 import 'package:project_bihon/features/supply_tracker/presentation/widgets/widgets.dart';
 import 'package:project_bihon/shared/widgets/app_button.dart';
-import 'package:project_bihon/main.dart' show getSupplyRepository;
+import 'package:project_bihon/shared/services/local_notification_service.dart';
+import 'package:project_bihon/main.dart' show getLocalNotificationService, getSupplyRepository;
 
 enum SupplyTrackerView { cards, table }
 
@@ -19,11 +20,13 @@ class SupplyTrackerPage extends StatefulWidget {
 class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   SupplyTrackerView _selectedView = SupplyTrackerView.table;
   late SupplyRepository _repository;
+  late LocalNotificationService _notificationService;
 
   @override
   void initState() {
     super.initState();
     _repository = getSupplyRepository();
+    _notificationService = getLocalNotificationService();
     _initializeSeedData();
   }
 
@@ -78,6 +81,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
 
       for (final item in seedItems) {
         await _repository.addItem(item);
+        await _notificationService.scheduleSupplyExpirationReminder(item);
       }
     }
   }
@@ -119,6 +123,8 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   );
 
                   await _repository.updateItem(index, updatedItem);
+                    await _notificationService
+                      .scheduleSupplyExpirationReminder(updatedItem);
 
                   if (mounted) {
                     Navigator.of(dialogContext).pop();
@@ -137,6 +143,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
 
   Future<void> _handleDelete(SupplyItem item, int index) async {
     await _repository.deleteItem(index);
+    await _notificationService.cancelSupplyExpirationReminder(item.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Deleted: ${item.name}')),

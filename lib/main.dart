@@ -4,9 +4,11 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
 import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
+import 'shared/services/local_notification_service.dart';
 import 'shared/shared.dart';
 
 late SupplyRepository _supplyRepository;
+late LocalNotificationService _localNotificationService;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +22,10 @@ void main() async {
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
   await _supplyRepository.initBox();
+
+  // Initialize local notification service
+  _localNotificationService = LocalNotificationService.instance;
+  await _localNotificationService.initialize();
 
   runApp(const MyApp());
 }
@@ -90,3 +96,6 @@ class HomePage extends StatelessWidget {
 
 /// Global getter to access the SupplyRepository from anywhere in the app.
 SupplyRepository getSupplyRepository() => _supplyRepository;
+
+/// Global getter to access local notifications from anywhere in the app.
+LocalNotificationService getLocalNotificationService() => _localNotificationService;
