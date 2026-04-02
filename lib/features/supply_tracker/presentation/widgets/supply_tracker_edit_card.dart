@@ -99,6 +99,13 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  void _showSnack(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger != null) {
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   bool _isNetworkImage(String path) {
     final parsed = Uri.tryParse(path);
     return parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https');
@@ -135,10 +142,49 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
         return;
       }
 
+      bool shouldSaveToGallery = false;
+      if (source == ImageSource.camera) {
+        if (_saveCapturedToGallery) {
+          shouldSaveToGallery = true;
+        } else {
+          final decision = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) {
+              return AlertDialog(
+                title: const Text('Save to gallery?'),
+                content: const Text('Do you want to save this captured photo to your device gallery?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    child: const Text('No'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    child: const Text('Yes'),
+                  ),
+                ],
+              );
+            },
+          );
+          shouldSaveToGallery = decision == true;
+        }
+      }
+
       final persistedPath = await _persistImage(pickedFile.path);
 
-      if (source == ImageSource.camera && _saveCapturedToGallery) {
-        await GallerySaver.saveImage(persistedPath);
+      if (source == ImageSource.camera && shouldSaveToGallery) {
+        final saved = await GallerySaver.saveImage(
+          pickedFile.path,
+          albumName: 'ProjectBihon',
+        );
+
+        if (mounted) {
+          _showSnack(
+            saved == true
+                ? 'Saved photo to gallery (ProjectBihon album).'
+                : 'Could not save photo to gallery. Please check gallery permissions.',
+          );
+        }
       }
 
       if (!mounted) {
@@ -149,24 +195,16 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
         _imageUrl = persistedPath;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            source == ImageSource.camera
-                ? 'Photo captured successfully.'
-                : 'Photo selected from gallery.',
-          ),
-        ),
+      _showSnack(
+        source == ImageSource.camera
+            ? 'Photo captured successfully.'
+            : 'Photo selected from gallery.',
       );
     } catch (_) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to access camera/gallery. Check permissions and try again.'),
-        ),
-      );
+      _showSnack('Unable to access camera/gallery. Check permissions and try again.');
     }
   }
 
@@ -362,7 +400,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
             SwitchListTile.adaptive(
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: const Text('Save captured photo to gallery (if permitted)'),
+              title: const Text('Always save captured photo to gallery (if permitted)'),
               value: _saveCapturedToGallery,
               onChanged: _isSubmitting
                   ? null

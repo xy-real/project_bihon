@@ -104,6 +104,13 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return _repository.getAllItems().indexWhere((item) => item.id == itemId);
   }
 
+  void _showSnack(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger != null) {
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   Future<void> _handleAddItem() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -157,17 +164,11 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     await _notificationService.scheduleSupplyExpirationReminder(newItem);
 
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Item added successfully: ${newItem.name}')),
-                      );
+                      _showSnack('Item added successfully: ${newItem.name}');
                     }
                   } catch (_) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Failed to add item. Please try again.'),
-                        ),
-                      );
+                      _showSnack('Failed to add item. Please try again.');
                     }
                   }
                 },
@@ -183,9 +184,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     final index = _findItemIndexById(item.id);
     if (index == -1) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item not found. Please refresh and try again.')),
-        );
+        _showSnack('Item not found. Please refresh and try again.');
       }
       return;
     }
@@ -230,9 +229,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
 
                   if (mounted) {
                     Navigator.of(dialogContext).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Updated: ${updatedItem.name}')),
-                    );
+                    _showSnack('Updated: ${updatedItem.name}');
                   }
                 },
               ),
@@ -247,9 +244,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     final index = _findItemIndexById(item.id);
     if (index == -1) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item not found. Please refresh and try again.')),
-        );
+        _showSnack('Item not found. Please refresh and try again.');
       }
       return;
     }
@@ -257,9 +252,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     await _repository.deleteItem(index);
     await _notificationService.cancelSupplyExpirationReminder(item.id);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Deleted: ${item.name}')),
-      );
+      _showSnack('Deleted: ${item.name}');
     }
   }
 
