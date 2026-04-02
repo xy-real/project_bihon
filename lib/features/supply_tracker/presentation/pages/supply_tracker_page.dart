@@ -5,9 +5,9 @@ import 'package:project_bihon/features/supply_tracker/data/models/supply_item.da
 import 'package:project_bihon/features/supply_tracker/data/repositories/supply_repository.dart';
 import 'package:project_bihon/features/supply_tracker/presentation/widgets/widgets.dart';
 import 'package:project_bihon/shared/widgets/app_button.dart';
+import 'package:project_bihon/shared/widgets/app_toast.dart';
 import 'package:project_bihon/shared/services/local_notification_service.dart';
 import 'package:project_bihon/main.dart' show getLocalNotificationService, getSupplyRepository;
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 enum SupplyTrackerView { cards, table }
 
@@ -105,50 +105,6 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return _repository.getAllItems().indexWhere((item) => item.id == itemId);
   }
 
-  String _formatErrorMessage(Object error) {
-    final message = error.toString().trim();
-    return message.isEmpty ? 'Unknown error.' : message;
-  }
-
-  void _showToast({
-    required String title,
-    required String message,
-    bool destructive = false,
-  }) {
-    final toaster = ShadToaster.maybeOf(context);
-    if (toaster != null) {
-      toaster.show(
-        destructive
-            ? ShadToast.destructive(
-                title: Text(title),
-                description: Text(message),
-              )
-            : ShadToast(
-                title: Text(title),
-                description: Text(message),
-              ),
-      );
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger != null) {
-      messenger.showSnackBar(SnackBar(content: Text('$title: $message')));
-    }
-  }
-
-  void _showSuccessToast(String title, String message) {
-    _showToast(title: title, message: message);
-  }
-
-  void _showErrorToast(String title, Object error) {
-    _showToast(
-      title: title,
-      message: _formatErrorMessage(error),
-      destructive: true,
-    );
-  }
-
   Future<void> _handleAddItem() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -202,11 +158,19 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     await _notificationService.scheduleSupplyExpirationReminder(newItem);
 
                     if (mounted) {
-                      _showSuccessToast('Item added', newItem.name);
+                      AppToast.success(
+                        context,
+                        title: 'Item added',
+                        message: newItem.name,
+                      );
                     }
                   } catch (error) {
                     if (mounted) {
-                      _showErrorToast('Failed to add item', error);
+                      AppToast.errorFromException(
+                        context,
+                        title: 'Failed to add item',
+                        error: error,
+                      );
                     }
                   }
                 },
@@ -222,10 +186,10 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     final index = _findItemIndexById(item.id);
     if (index == -1) {
       if (mounted) {
-        _showToast(
+        AppToast.error(
+          context,
           title: 'Item not found',
           message: 'Please refresh and try again.',
-          destructive: true,
         );
       }
       return;
@@ -272,11 +236,19 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
 
                     if (mounted) {
                       Navigator.of(dialogContext).pop();
-                      _showSuccessToast('Item updated', updatedItem.name);
+                      AppToast.success(
+                        context,
+                        title: 'Item updated',
+                        message: updatedItem.name,
+                      );
                     }
                   } catch (error) {
                     if (mounted) {
-                      _showErrorToast('Failed to update item', error);
+                      AppToast.errorFromException(
+                        context,
+                        title: 'Failed to update item',
+                        error: error,
+                      );
                     }
                   }
                 },
@@ -292,10 +264,10 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     final index = _findItemIndexById(item.id);
     if (index == -1) {
       if (mounted) {
-        _showToast(
+        AppToast.error(
+          context,
           title: 'Item not found',
           message: 'Please refresh and try again.',
-          destructive: true,
         );
       }
       return;
@@ -305,11 +277,19 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
       await _repository.deleteItem(index);
       await _notificationService.cancelSupplyExpirationReminder(item.id);
       if (mounted) {
-        _showSuccessToast('Item deleted', item.name);
+        AppToast.success(
+          context,
+          title: 'Item deleted',
+          message: item.name,
+        );
       }
     } catch (error) {
       if (mounted) {
-        _showErrorToast('Failed to delete item', error);
+        AppToast.errorFromException(
+          context,
+          title: 'Failed to delete item',
+          error: error,
+        );
       }
     }
   }

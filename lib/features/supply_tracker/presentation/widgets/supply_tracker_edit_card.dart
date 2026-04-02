@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:project_bihon/shared/widgets/app_button.dart';
+import 'package:project_bihon/shared/widgets/app_toast.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SupplyTrackerEditCard extends StatefulWidget {
@@ -97,38 +98,6 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  String _formatErrorMessage(Object error) {
-    final message = error.toString().trim();
-    return message.isEmpty ? 'Unknown error.' : message;
-  }
-
-  void _showToast({
-    required String title,
-    required String message,
-    bool destructive = false,
-  }) {
-    final toaster = ShadToaster.maybeOf(context);
-    if (toaster != null) {
-      toaster.show(
-        destructive
-            ? ShadToast.destructive(
-                title: Text(title),
-                description: Text(message),
-              )
-            : ShadToast(
-                title: Text(title),
-                description: Text(message),
-              ),
-      );
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger != null) {
-      messenger.showSnackBar(SnackBar(content: Text('$title: $message')));
-    }
-  }
-
   bool _isNetworkImage(String path) {
     final parsed = Uri.tryParse(path);
     return parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https');
@@ -175,7 +144,8 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
         _imageUrl = persistedPath;
       });
 
-      _showToast(
+      AppToast.success(
+        context,
         title: 'Image added',
         message: source == ImageSource.camera
             ? 'Photo captured successfully.'
@@ -185,10 +155,10 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
       if (!mounted) {
         return;
       }
-      _showToast(
+      AppToast.errorFromException(
+        context,
         title: 'Unable to add image',
-        message: _formatErrorMessage(error),
-        destructive: true,
+        error: error,
       );
     }
   }
