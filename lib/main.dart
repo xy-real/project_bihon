@@ -6,6 +6,7 @@ import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
 import 'shared/services/local_notification_service.dart';
 import 'shared/shared.dart';
+import 'splash/logo_splash_screen.dart';
 
 late SupplyRepository _supplyRepository;
 late LocalNotificationService _localNotificationService;
@@ -53,12 +54,30 @@ class _MyAppState extends State<MyApp> {
       themeMode: _themeMode,
       theme: BihonTheme.light(),
       darkTheme: BihonTheme.dark(),
-      home: ShadToaster(
-        child: HomePage(
-          themeMode: _themeMode,
-          onThemeChanged: _onThemeChanged,
-        ),
-      ),
+      home: const LogoSplashScreen(),
+      onGenerateRoute: (settings) {
+        if (settings.name == '/home') {
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return ShadToaster(
+                child: HomePage(
+                  themeMode: _themeMode,
+                  onThemeChanged: _onThemeChanged,
+                ),
+              );
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          );
+        }
+        return null;
+      },
     );
   }
 }
