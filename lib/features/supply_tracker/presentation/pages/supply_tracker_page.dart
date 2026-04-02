@@ -145,14 +145,27 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     expirationDate: expirationDate,
                   );
 
-                  await _repository.addItem(newItem);
-                  await _notificationService.scheduleSupplyExpirationReminder(newItem);
-
                   if (mounted) {
                     Navigator.of(sheetContext).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added: ${newItem.name}')),
-                    );
+                  }
+
+                  try {
+                    await _repository.addItem(newItem);
+                    await _notificationService.scheduleSupplyExpirationReminder(newItem);
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Item added successfully: ${newItem.name}')),
+                      );
+                    }
+                  } catch (_) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Failed to add item. Please try again.'),
+                        ),
+                      );
+                    }
                   }
                 },
               ),

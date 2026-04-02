@@ -10,7 +10,7 @@ class SupplyTrackerEditCard extends StatefulWidget {
   final String? initialCategory;
   final int initialStockCount;
   final DateTime initialExpirationDate;
-  final void Function({
+  final Future<void> Function({
     required String itemName,
     required String category,
     required int stockCount,
@@ -50,6 +50,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
   late final TextEditingController _stockController;
   late DateTime _expirationDate;
   String? _selectedCategory;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -86,18 +87,34 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSubmitting) {
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
+    setState(() {
+      _isSubmitting = true;
+    });
+
     final parsedStock = int.parse(_stockController.text.trim());
-    widget.onSave(
-      itemName: _nameController.text.trim(),
-      category: _selectedCategory!,
-      stockCount: parsedStock,
-      expirationDate: _expirationDate,
-    );
+    try {
+      await widget.onSave(
+        itemName: _nameController.text.trim(),
+        category: _selectedCategory!,
+        stockCount: parsedStock,
+        expirationDate: _expirationDate,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -113,6 +130,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
           children: [
             TextFormField(
               controller: _nameController,
+              enabled: !_isSubmitting,
               decoration: const InputDecoration(labelText: 'Item Name'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -124,6 +142,13 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _selectedCategory,
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _selectedCategory = value;
+                      });
+                    },
               decoration: const InputDecoration(labelText: 'Category'),
               items: _categoryOptions
                   .map(
@@ -133,11 +158,6 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
                     ),
                   )
                   .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedCategory = value;
-                });
-              },
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Category is required.';
@@ -148,6 +168,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _stockController,
+              enabled: !_isSubmitting,
               decoration: const InputDecoration(labelText: 'Amount / Stock Count'),
               keyboardType: TextInputType.number,
               validator: (value) {
@@ -168,7 +189,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
                   child: Text('Expiration Date: ${_formatDate(_expirationDate)}'),
                 ),
                 AppButton(
-                  onPressed: _pickDate,
+                  onPressed: _isSubmitting ? null : _pickDate,
                   variant: AppButtonVariant.outline,
                   size: AppButtonSize.small,
                   child: const Text('Pick Date'),
@@ -180,7 +201,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
               children: [
                 Expanded(
                   child: AppButton(
-                    onPressed: widget.onCancel,
+                    onPressed: _isSubmitting ? null : widget.onCancel,
                     variant: AppButtonVariant.outline,
                     expands: true,
                     child: const Text('Cancel'),
@@ -189,10 +210,10 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: AppButton(
-                    onPressed: _submit,
+                    onPressed: _isSubmitting ? null : _submit,
                     variant: AppButtonVariant.primary,
                     expands: true,
-                    child: Text(widget.saveButtonLabel),
+                    child: Text(_isSubmitting ? 'Saving...' : widget.saveButtonLabel),
                   ),
                 ),
               ],
