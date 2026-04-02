@@ -1,9 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
+import 'features/supply_tracker/data/models/supply_item.dart';
+import 'features/supply_tracker/data/repositories/supply_repository.dart';
+import 'shared/services/local_notification_service.dart';
 import 'shared/shared.dart';
 import 'splash/logo_splash_screen.dart';
 
-void main() {
+late SupplyRepository _supplyRepository;
+late LocalNotificationService _localNotificationService;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+
+  // Register Hive adapters
+  Hive.registerAdapter(SupplyItemAdapter());
+
+  // Initialize SupplyRepository
+  _supplyRepository = SupplyRepository();
+  await _supplyRepository.initBox();
+
+  // Initialize local notification service
+  _localNotificationService = LocalNotificationService.instance;
+  await _localNotificationService.initialize();
+
   runApp(const MyApp());
 }
 
@@ -36,9 +60,11 @@ class _MyAppState extends State<MyApp> {
           return PageRouteBuilder(
             settings: settings,
             pageBuilder: (context, animation, secondaryAnimation) {
-              return HomePage(
-                themeMode: _themeMode,
-                onThemeChanged: _onThemeChanged,
+              return ShadToaster(
+                child: HomePage(
+                  themeMode: _themeMode,
+                  onThemeChanged: _onThemeChanged,
+                ),
               );
             },
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -70,7 +96,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Project Bihon'),
+        title: const Text('Crisync'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -84,7 +110,13 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(child: Text('Clean slate ready. Start building!')),
+      body: const SupplyTrackerPage(),
     );
   }
 }
+
+/// Global getter to access the SupplyRepository from anywhere in the app.
+SupplyRepository getSupplyRepository() => _supplyRepository;
+
+/// Global getter to access local notifications from anywhere in the app.
+LocalNotificationService getLocalNotificationService() => _localNotificationService;
