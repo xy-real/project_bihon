@@ -1,4 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:gallery_saver_plus/gallery_saver.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -8,11 +14,13 @@ class SupplyTrackerEditCard extends StatefulWidget {
   final String saveButtonLabel;
   final String initialName;
   final String? initialCategory;
+  final String? initialImageUrl;
   final int initialStockCount;
   final DateTime initialExpirationDate;
   final Future<void> Function({
     required String itemName,
     required String category,
+    required String? imageUrl,
     required int stockCount,
     required DateTime expirationDate,
   }) onSave;
@@ -25,6 +33,7 @@ class SupplyTrackerEditCard extends StatefulWidget {
     this.saveButtonLabel = 'Save Changes',
     required this.initialName,
     this.initialCategory,
+    this.initialImageUrl,
     required this.initialStockCount,
     required this.initialExpirationDate,
     required this.onSave,
@@ -50,7 +59,9 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
   late final TextEditingController _stockController;
   late DateTime _expirationDate;
   String? _selectedCategory;
+  String? _imageUrl;
   bool _isSubmitting = false;
+  bool _saveCapturedToGallery = false;
 
   @override
   void initState() {
@@ -59,6 +70,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
     _stockController = TextEditingController(text: widget.initialStockCount.toString());
     _expirationDate = widget.initialExpirationDate;
     _selectedCategory = widget.initialCategory;
+    _imageUrl = widget.initialImageUrl;
   }
 
   @override
@@ -87,6 +99,115 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  bool _isNetworkImage(String path) {
+    final parsed = Uri.tryParse(path);
+    return parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https');
+  }
+
+  Future<String> _persistImage(String sourcePath) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final imagesDir = Directory(p.join(dir.path, 'supply_images'));
+    if (!await imagesDir.exists()) {
+      await imagesDir.create(recursive: true);
+    }
+
+    final extension = p.extension(sourcePath).isNotEmpty ? p.extension(sourcePath) : '.jpg';
+    final fileName = 'supply_${DateTime.now().millisecondsSinceEpoch}$extension';
+    final destinationPath = p.join(imagesDir.path, fileName);
+    final copied = await File(sourcePath).copy(destinationPath);
+    return copied.path;
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1920,
+      );
+
+      if (pickedFile == null) {
+        return;
+      }
+
+      final persistedPath = await _persistImage(pickedFile.path);
+
+      if (source == ImageSource.camera && _saveCapturedToGallery) {
+        await GallerySaver.saveImage(persistedPath);
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _imageUrl = persistedPath;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            source == ImageSource.camera
+                ? 'Photo captured successfully.'
+                : 'Photo selected from gallery.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to access camera/gallery. Check permissions and try again.'),
+        ),
+      );
+    }
+  }
+
+  Widget _buildImagePreview() {
+    if (_imageUrl == null || _imageUrl!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final path = _imageUrl!;
+    final isNetwork = _isNetworkImage(path);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: isNetwork
+              ? Image.network(
+                  path,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey.shade200,
+                    alignment: Alignment.center,
+                    child: const Text('Image preview unavailable'),
+                  ),
+                )
+              : Image.file(
+                  File(path),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey.shade200,
+                    alignment: Alignment.center,
+                    child: const Text('Image preview unavailable'),
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_isSubmitting) {
       return;
@@ -105,6 +226,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
       await widget.onSave(
         itemName: _nameController.text.trim(),
         category: _selectedCategory!,
+        imageUrl: _imageUrl,
         stockCount: parsedStock,
         expirationDate: _expirationDate,
       );
@@ -196,6 +318,61 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _imageUrl == null || _imageUrl!.isEmpty
+                        ? 'Picture: None selected'
+                        : 'Picture: Added',
+                  ),
+                ),
+                AppButton(
+                  onPressed: _isSubmitting ? null : () => _pickImage(ImageSource.camera),
+                  variant: AppButtonVariant.outline,
+                  size: AppButtonSize.small,
+                  child: const Text('Camera'),
+                ),
+                const SizedBox(width: 8),
+                AppButton(
+                  onPressed: _isSubmitting ? null : () => _pickImage(ImageSource.gallery),
+                  variant: AppButtonVariant.outline,
+                  size: AppButtonSize.small,
+                  child: const Text('Gallery'),
+                ),
+                if (_imageUrl != null && _imageUrl!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  AppButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () {
+                            setState(() {
+                              _imageUrl = null;
+                            });
+                          },
+                    variant: AppButtonVariant.outline,
+                    size: AppButtonSize.small,
+                    child: const Text('Remove'),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Save captured photo to gallery (if permitted)'),
+              value: _saveCapturedToGallery,
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _saveCapturedToGallery = value;
+                      });
+                    },
+            ),
+            _buildImagePreview(),
             const SizedBox(height: 16),
             Row(
               children: [

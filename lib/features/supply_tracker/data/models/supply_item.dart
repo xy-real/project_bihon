@@ -19,12 +19,16 @@ class SupplyItem extends HiveObject {
   @HiveField(4)
   DateTime expirationDate;
 
+  @HiveField(5)
+  String? imageUrl;
+
   SupplyItem({
     required this.id,
     required this.name,
     required this.category,
     required this.quantity,
     required this.expirationDate,
+    this.imageUrl,
   });
 
   // Helper getters to cleanly check expiration status in the UI

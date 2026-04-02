@@ -125,6 +125,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 saveButtonLabel: 'Add Item',
                 initialName: '',
                 initialCategory: null,
+                initialImageUrl: null,
                 initialStockCount: 0,
                 initialExpirationDate: DateTime.now().add(const Duration(days: 30)),
                 onCancel: () {
@@ -133,6 +134,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 onSave: ({
                   required String itemName,
                   required String category,
+                  required String? imageUrl,
                   required int stockCount,
                   required DateTime expirationDate,
                 }) async {
@@ -141,6 +143,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     id: uuid.v4(),
                     name: itemName,
                     category: category,
+                    imageUrl: imageUrl,
                     quantity: stockCount,
                     expirationDate: expirationDate,
                   );
@@ -199,6 +202,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
               child: SupplyTrackerEditCard(
                 initialName: item.name,
                 initialCategory: item.category,
+                initialImageUrl: item.imageUrl,
                 initialStockCount: item.quantity,
                 initialExpirationDate: item.expirationDate,
                 onCancel: () {
@@ -207,6 +211,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 onSave: ({
                   required String itemName,
                   required String category,
+                  required String? imageUrl,
                   required int stockCount,
                   required DateTime expirationDate,
                 }) async {
@@ -214,6 +219,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     id: item.id,
                     name: itemName,
                     category: category,
+                    imageUrl: imageUrl,
                     quantity: stockCount,
                     expirationDate: expirationDate,
                   );
@@ -272,7 +278,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 description: item.category,
                 stockCount: item.quantity,
                 expirationDate: item.expirationDate,
-                imageUrl: null,
+                imageUrl: item.imageUrl,
                 supplyItem: item,
                 onTap: () {
                   Navigator.of(context).pop();
@@ -314,7 +320,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   stockCount: items[i].quantity,
                   expirationDate: items[i].expirationDate,
                   supplyItem: items[i],
-                  imageUrl: null,
+                  imageUrl: items[i].imageUrl,
                   onTap: () {
                     _showItemDetailsDialog(context, item: items[i]);
                   },

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart' as lucide;
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
@@ -60,6 +62,14 @@ class SupplyTrackerItemCard extends StatelessWidget {
     }
   }
 
+  bool _isNetworkImage(String? path) {
+    if (path == null || path.isEmpty) {
+      return false;
+    }
+    final parsed = Uri.tryParse(path);
+    return parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https');
+  }
+
   @override
   Widget build(BuildContext context) {
     final isExpired = _isExpired;
@@ -111,13 +121,21 @@ class SupplyTrackerItemCard extends StatelessWidget {
                               ),
                             ),
                             child: imageUrl != null
-                                ? Image.network(
-                                    imageUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return _buildImagePlaceholder(context, iconSize);
-                                    },
-                                  )
+                                ? _isNetworkImage(imageUrl)
+                                    ? Image.network(
+                                        imageUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return _buildImagePlaceholder(context, iconSize);
+                                        },
+                                      )
+                                    : Image.file(
+                                        File(imageUrl!),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return _buildImagePlaceholder(context, iconSize);
+                                        },
+                                      )
                                 : _buildImagePlaceholder(context, iconSize),
                           ),
                         ),
