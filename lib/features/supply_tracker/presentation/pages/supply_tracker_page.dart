@@ -38,63 +38,6 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     super.initState();
     _repository = getSupplyRepository();
     _notificationService = getLocalNotificationService();
-    _initializeSeedData();
-  }
-
-  /// Initialize seed data if the box is empty
-  Future<void> _initializeSeedData() async {
-    if (_repository.getAllItems().isEmpty) {
-      const uuid = Uuid();
-      final seedItems = [
-        SupplyItem(
-          id: uuid.v4(),
-          name: 'Medical Masks (N95)',
-          category: 'Medical',
-          quantity: 150,
-          expirationDate: DateTime(2026, 6, 15),
-        ),
-        SupplyItem(
-          id: uuid.v4(),
-          name: 'Surgical Gloves',
-          category: 'Medical',
-          quantity: 500,
-          expirationDate: DateTime(2025, 12, 31),
-        ),
-        SupplyItem(
-          id: uuid.v4(),
-          name: 'Antiseptic Solution',
-          category: 'Medical',
-          quantity: 45,
-          expirationDate: DateTime(2026, 2, 28),
-        ),
-        SupplyItem(
-          id: uuid.v4(),
-          name: 'First Aid Kit',
-          category: 'Medical',
-          quantity: 12,
-          expirationDate: DateTime(2026, 9, 10),
-        ),
-        SupplyItem(
-          id: uuid.v4(),
-          name: 'Bandages & Gauze',
-          category: 'Medical',
-          quantity: 200,
-          expirationDate: DateTime(2027, 1, 5),
-        ),
-        SupplyItem(
-          id: uuid.v4(),
-          name: 'Thermometer (Digital)',
-          category: 'Medical',
-          quantity: 8,
-          expirationDate: DateTime(2028, 5, 20),
-        ),
-      ];
-
-      for (final item in seedItems) {
-        await _repository.addItem(item);
-        await _notificationService.scheduleSupplyExpirationReminder(item);
-      }
-    }
   }
 
   String _formatDate(DateTime date) {
