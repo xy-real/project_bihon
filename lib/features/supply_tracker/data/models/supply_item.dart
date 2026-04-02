@@ -4,6 +4,8 @@ part 'supply_item.g.dart';
 
 @HiveType(typeId: 0)
 class SupplyItem extends HiveObject {
+  static const String defaultHouseholdId = 'default_household';
+
   @HiveField(0)
   final String id;
 
@@ -22,6 +24,9 @@ class SupplyItem extends HiveObject {
   @HiveField(5)
   String? imageUrl;
 
+  @HiveField(6)
+  String householdId;
+
   SupplyItem({
     required this.id,
     required this.name,
@@ -29,6 +34,7 @@ class SupplyItem extends HiveObject {
     required this.quantity,
     required this.expirationDate,
     this.imageUrl,
+    this.householdId = defaultHouseholdId,
   });
 
   // Helper getters to cleanly check expiration status in the UI

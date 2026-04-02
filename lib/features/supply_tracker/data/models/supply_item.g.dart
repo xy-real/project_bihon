@@ -23,13 +23,14 @@ class SupplyItemAdapter extends TypeAdapter<SupplyItem> {
       quantity: fields[3] as int,
       expirationDate: fields[4] as DateTime,
       imageUrl: fields[5] as String?,
+      householdId: fields[6] as String? ?? SupplyItem.defaultHouseholdId,
     );
   }
 
   @override
   void write(BinaryWriter writer, SupplyItem obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class SupplyItemAdapter extends TypeAdapter<SupplyItem> {
       ..writeByte(4)
       ..write(obj.expirationDate)
       ..writeByte(5)
-      ..write(obj.imageUrl);
+      ..write(obj.imageUrl)
+      ..writeByte(6)
+      ..write(obj.householdId);
   }
 
   @override

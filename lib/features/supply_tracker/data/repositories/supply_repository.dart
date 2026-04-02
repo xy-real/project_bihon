@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
+import 'package:project_bihon/features/supply_tracker/data/services/supply_ai_payload_builder.dart';
 
 class SupplyRepository {
   static const String _boxName = 'supply_box';
@@ -14,6 +15,21 @@ class SupplyRepository {
   /// Get all items as a list.
   List<SupplyItem> getAllItems() {
     return _box.values.toList();
+  }
+
+  /// Get all items associated with one household.
+  List<SupplyItem> getItemsForHousehold(String householdId) {
+    return _box.values.where((item) => item.householdId == householdId).toList();
+  }
+
+  /// Build an anonymized inventory payload intended for AI readiness scoring.
+  Map<String, dynamic> buildAiInventoryPayload({
+    String householdId = SupplyItem.defaultHouseholdId,
+  }) {
+    return SupplyAiPayloadBuilder.buildPayload(
+      householdId: householdId,
+      items: getItemsForHousehold(householdId),
+    );
   }
 
   /// Get a ValueListenable for reactive updates in the UI.
