@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -61,7 +60,6 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
   String? _selectedCategory;
   String? _imageUrl;
   bool _isSubmitting = false;
-  bool _saveCapturedToGallery = false;
 
   @override
   void initState() {
@@ -142,50 +140,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
         return;
       }
 
-      bool shouldSaveToGallery = false;
-      if (source == ImageSource.camera) {
-        if (_saveCapturedToGallery) {
-          shouldSaveToGallery = true;
-        } else {
-          final decision = await showDialog<bool>(
-            context: context,
-            builder: (dialogContext) {
-              return AlertDialog(
-                title: const Text('Save to gallery?'),
-                content: const Text('Do you want to save this captured photo to your device gallery?'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
-                    child: const Text('No'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
-                    child: const Text('Yes'),
-                  ),
-                ],
-              );
-            },
-          );
-          shouldSaveToGallery = decision == true;
-        }
-      }
-
       final persistedPath = await _persistImage(pickedFile.path);
-
-      if (source == ImageSource.camera && shouldSaveToGallery) {
-        final saved = await GallerySaver.saveImage(
-          pickedFile.path,
-          albumName: 'ProjectBihon',
-        );
-
-        if (mounted) {
-          _showSnack(
-            saved == true
-                ? 'Saved photo to gallery (ProjectBihon album).'
-                : 'Could not save photo to gallery. Please check gallery permissions.',
-          );
-        }
-      }
 
       if (!mounted) {
         return;
@@ -397,19 +352,6 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
               ],
             ),
             const SizedBox(height: 8),
-            SwitchListTile.adaptive(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Always save captured photo to gallery (if permitted)'),
-              value: _saveCapturedToGallery,
-              onChanged: _isSubmitting
-                  ? null
-                  : (value) {
-                      setState(() {
-                        _saveCapturedToGallery = value;
-                      });
-                    },
-            ),
             _buildImagePreview(),
             const SizedBox(height: 16),
             Row(
