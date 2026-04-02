@@ -7,6 +7,7 @@ import 'package:project_bihon/features/supply_tracker/presentation/widgets/widge
 import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:project_bihon/shared/services/local_notification_service.dart';
 import 'package:project_bihon/main.dart' show getLocalNotificationService, getSupplyRepository;
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 enum SupplyTrackerView { cards, table }
 
@@ -104,11 +105,48 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return _repository.getAllItems().indexWhere((item) => item.id == itemId);
   }
 
-  void _showSnack(String message) {
+  String _formatErrorMessage(Object error) {
+    final message = error.toString().trim();
+    return message.isEmpty ? 'Unknown error.' : message;
+  }
+
+  void _showToast({
+    required String title,
+    required String message,
+    bool destructive = false,
+  }) {
+    final toaster = ShadToaster.maybeOf(context);
+    if (toaster != null) {
+      toaster.show(
+        destructive
+            ? ShadToast.destructive(
+                title: Text(title),
+                description: Text(message),
+              )
+            : ShadToast(
+                title: Text(title),
+                description: Text(message),
+              ),
+      );
+      return;
+    }
+
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger != null) {
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+      messenger.showSnackBar(SnackBar(content: Text('$title: $message')));
     }
+  }
+
+  void _showSuccessToast(String title, String message) {
+    _showToast(title: title, message: message);
+  }
+
+  void _showErrorToast(String title, Object error) {
+    _showToast(
+      title: title,
+      message: _formatErrorMessage(error),
+      destructive: true,
+    );
   }
 
   Future<void> _handleAddItem() async {
@@ -164,11 +202,11 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     await _notificationService.scheduleSupplyExpirationReminder(newItem);
 
                     if (mounted) {
-                      _showSnack('Item added successfully: ${newItem.name}');
+                      _showSuccessToast('Item added', newItem.name);
                     }
-                  } catch (_) {
+                  } catch (error) {
                     if (mounted) {
-                      _showSnack('Failed to add item. Please try again.');
+                      _showErrorToast('Failed to add item', error);
                     }
                   }
                 },
@@ -184,7 +222,11 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     final index = _findItemIndexById(item.id);
     if (index == -1) {
       if (mounted) {
-        _showSnack('Item not found. Please refresh and try again.');
+        _showToast(
+          title: 'Item not found',
+          message: 'Please refresh and try again.',
+          destructive: true,
+        );
       }
       return;
     }
@@ -223,13 +265,19 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     expirationDate: expirationDate,
                   );
 
-                  await _repository.updateItem(index, updatedItem);
+                  try {
+                    await _repository.updateItem(index, updatedItem);
                     await _notificationService
-                      .scheduleSupplyExpirationReminder(updatedItem);
+                        .scheduleSupplyExpirationReminder(updatedItem);
 
-                  if (mounted) {
-                    Navigator.of(dialogContext).pop();
-                    _showSnack('Updated: ${updatedItem.name}');
+                    if (mounted) {
+                      Navigator.of(dialogContext).pop();
+                      _showSuccessToast('Item updated', updatedItem.name);
+                    }
+                  } catch (error) {
+                    if (mounted) {
+                      _showErrorToast('Failed to update item', error);
+                    }
                   }
                 },
               ),
@@ -244,15 +292,25 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     final index = _findItemIndexById(item.id);
     if (index == -1) {
       if (mounted) {
-        _showSnack('Item not found. Please refresh and try again.');
+        _showToast(
+          title: 'Item not found',
+          message: 'Please refresh and try again.',
+          destructive: true,
+        );
       }
       return;
     }
 
-    await _repository.deleteItem(index);
-    await _notificationService.cancelSupplyExpirationReminder(item.id);
-    if (mounted) {
-      _showSnack('Deleted: ${item.name}');
+    try {
+      await _repository.deleteItem(index);
+      await _notificationService.cancelSupplyExpirationReminder(item.id);
+      if (mounted) {
+        _showSuccessToast('Item deleted', item.name);
+      }
+    } catch (error) {
+      if (mounted) {
+        _showErrorToast('Failed to delete item', error);
+      }
     }
   }
 

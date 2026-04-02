@@ -97,10 +97,35 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  void _showSnack(String message) {
+  String _formatErrorMessage(Object error) {
+    final message = error.toString().trim();
+    return message.isEmpty ? 'Unknown error.' : message;
+  }
+
+  void _showToast({
+    required String title,
+    required String message,
+    bool destructive = false,
+  }) {
+    final toaster = ShadToaster.maybeOf(context);
+    if (toaster != null) {
+      toaster.show(
+        destructive
+            ? ShadToast.destructive(
+                title: Text(title),
+                description: Text(message),
+              )
+            : ShadToast(
+                title: Text(title),
+                description: Text(message),
+              ),
+      );
+      return;
+    }
+
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger != null) {
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+      messenger.showSnackBar(SnackBar(content: Text('$title: $message')));
     }
   }
 
@@ -150,16 +175,21 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
         _imageUrl = persistedPath;
       });
 
-      _showSnack(
-        source == ImageSource.camera
+      _showToast(
+        title: 'Image added',
+        message: source == ImageSource.camera
             ? 'Photo captured successfully.'
             : 'Photo selected from gallery.',
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      _showSnack('Unable to access camera/gallery. Check permissions and try again.');
+      _showToast(
+        title: 'Unable to add image',
+        message: _formatErrorMessage(error),
+        destructive: true,
+      );
     }
   }
 

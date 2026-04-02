@@ -53,9 +53,11 @@ class _MyAppState extends State<MyApp> {
       themeMode: _themeMode,
       theme: BihonTheme.light(),
       darkTheme: BihonTheme.dark(),
-      home: HomePage(
-        themeMode: _themeMode,
-        onThemeChanged: _onThemeChanged,
+      home: ShadToaster(
+        child: HomePage(
+          themeMode: _themeMode,
+          onThemeChanged: _onThemeChanged,
+        ),
       ),
     );
   }
