@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'shared/shared.dart';
+import 'splash/logo_splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,10 +30,28 @@ class _MyAppState extends State<MyApp> {
       themeMode: _themeMode,
       theme: BihonTheme.light(),
       darkTheme: BihonTheme.dark(),
-      home: HomePage(
-        themeMode: _themeMode,
-        onThemeChanged: _onThemeChanged,
-      ),
+      home: const LogoSplashScreen(),
+      onGenerateRoute: (settings) {
+        if (settings.name == '/home') {
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return HomePage(
+                themeMode: _themeMode,
+                onThemeChanged: _onThemeChanged,
+              );
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          );
+        }
+        return null;
+      },
     );
   }
 }

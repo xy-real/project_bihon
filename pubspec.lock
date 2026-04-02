@@ -73,6 +73,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+  csslib:
+    dependency: transitive
+    description:
+      name: csslib
+      sha256: "09bad715f418841f976c77db72d5398dc1253c21fb9c0c7f0b0b985860b2d58e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -168,6 +176,11 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_web_plugins:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   glob:
     dependency: transitive
     description:
@@ -184,6 +197,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.2"
+  html:
+    dependency: transitive
+    description:
+      name: html
+      sha256: "6d1264f2dffa1b1101c25a91dff0dc2daee4c18e87cd8538729773c073dbf602"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.15.6"
   http:
     dependency: transitive
     description:
@@ -276,10 +297,10 @@ packages:
     dependency: transitive
     description:
       name: matcher
-      sha256: "12956d0ad8390bbcc63ca2e1469c0619946ccb52809807067a7020d57e647aa6"
+      sha256: dc0b7dc7651697ea4ff3e69ef44b0407ea32c487a39fff6a4004fa585e901861
       url: "https://pub.dev"
     source: hosted
-    version: "0.12.18"
+    version: "0.12.19"
   material_color_utilities:
     dependency: transitive
     description:
@@ -420,10 +441,10 @@ packages:
     dependency: "direct main"
     description:
       name: shadcn_ui
-      sha256: "3a303139ed289f4e7d2bd6fc2bc19952033e4456b55dfbf8365461691cc19f48"
+      sha256: "99a1aef7334af7054650f64d089f83ff96a5cbc92947e31b2e4ffe0a530f9f7a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.52.1"
+    version: "0.52.2"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -489,18 +510,18 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "93167629bfc610f71560ab9312acdda4959de4df6fac7492c89ff0d3886f6636"
+      sha256: "8161c84903fd860b26bfdefb7963b3f0b68fee7adea0f59ef805ecca346f0c7a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.9"
+    version: "0.7.10"
   theme_extensions_builder_annotation:
     dependency: transitive
     description:
       name: theme_extensions_builder_annotation
-      sha256: e14648a3318842992f14b207cb811df48a1d6f0bd742b77bcbf1b74557493c00
+      sha256: "75f28ac85d396d143d111a47c1395b01f3be41b7135f37bd51512921944e4206"
       url: "https://pub.dev"
     source: hosted
-    version: "7.1.0"
+    version: "7.3.0"
   two_dimensional_scrollables:
     dependency: transitive
     description:
@@ -557,6 +578,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  video_player:
+    dependency: "direct main"
+    description:
+      name: video_player
+      sha256: "48a7bdaa38a3d50ec10c78627abdbfad863fdf6f0d6e08c7c3c040cfd80ae36f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.11.1"
+  video_player_android:
+    dependency: transitive
+    description:
+      name: video_player_android
+      sha256: "877a6c7ba772456077d7bfd71314629b3fe2b73733ce503fc77c3314d43a0ca0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.9.5"
+  video_player_avfoundation:
+    dependency: transitive
+    description:
+      name: video_player_avfoundation
+      sha256: af0e5b8a7a4876fb37e7cc8cb2a011e82bb3ecfa45844ef672e32cb14a1f259e
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.9.4"
+  video_player_platform_interface:
+    dependency: transitive
+    description:
+      name: video_player_platform_interface
+      sha256: "57c5d73173f76d801129d0531c2774052c5a7c11ccb962f1830630decd9f24ec"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.6.0"
+  video_player_web:
+    dependency: transitive
+    description:
+      name: video_player_web
+      sha256: "9f3c00be2ef9b76a95d94ac5119fb843dca6f2c69e6c9968f6f2b6c9e7afbdeb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.0"
   vm_service:
     dependency: transitive
     description:
