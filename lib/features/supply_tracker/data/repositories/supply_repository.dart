@@ -44,39 +44,6 @@ class SupplyRepository {
     }
   }
 
-  /// Mark an item as replaced (set quantity to 0).
-  Future<void> markItemReplaced(int index) async {
-    final item = _box.getAt(index);
-    if (item != null) {
-      item.quantity = 0;
-      await _box.putAt(index, item);
-    }
-  }
-
-  /// Duplicate an item with the same properties (new ID).
-  Future<void> duplicateItem(int index, String newId) async {
-    final item = _box.getAt(index);
-    if (item != null) {
-      final newItem = SupplyItem(
-        id: newId,
-        name: item.name,
-        category: item.category,
-        quantity: item.quantity,
-        expirationDate: item.expirationDate,
-      );
-      await _box.add(newItem);
-    }
-  }
-
-  /// Add stock to an item by quantity.
-  Future<void> addStock(int index, int amount) async {
-    final item = _box.getAt(index);
-    if (item != null) {
-      item.quantity += amount;
-      await _box.putAt(index, item);
-    }
-  }
-
   /// Clear all items from the box.
   Future<void> clearAll() async {
     await _box.clear();

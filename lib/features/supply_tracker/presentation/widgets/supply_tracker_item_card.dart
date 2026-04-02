@@ -13,9 +13,6 @@ class SupplyTrackerItemCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
-  final VoidCallback? onMarkReplaced;
-  final VoidCallback? onDuplicate;
-  final VoidCallback? onAddStock;
   final SupplyItem? supplyItem;
 
   const SupplyTrackerItemCard({
@@ -28,9 +25,6 @@ class SupplyTrackerItemCard extends StatelessWidget {
     this.onTap,
     this.onEdit,
     this.onDelete,
-    this.onMarkReplaced,
-    this.onDuplicate,
-    this.onAddStock,
     this.supplyItem,
   });
 
@@ -321,69 +315,6 @@ class SupplyTrackerItemCard extends StatelessWidget {
                                   ),
                               ],
                             ),
-                            if (onMarkReplaced != null || onDuplicate != null || onAddStock != null) ...[
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  if (onMarkReplaced != null)
-                                    SizedBox(
-                                      width: onAddStock != null ? (isCompact ? double.infinity : 100) : 100,
-                                      child: AppButton(
-                                        onPressed: onMarkReplaced,
-                                        variant: AppButtonVariant.outline,
-                                        size: AppButtonSize.small,
-                                        expands: true,
-                                        lightBackgroundColor: Colors.blue.shade50,
-                                        darkBackgroundColor: Colors.blue.shade300,
-                                        lightForegroundColor: Colors.blue.shade900,
-                                        darkForegroundColor: Colors.blue.shade900,
-                                        lightBorderColor: Colors.blue.shade200,
-                                        darkBorderColor: Colors.blue.shade200,
-                                        leading: const Icon(Icons.check_circle_outline, size: 14),
-                                        child: const Text('Replaced'),
-                                      ),
-                                    ),
-                                  if (onDuplicate != null)
-                                    SizedBox(
-                                      width: 100,
-                                      child: AppButton(
-                                        onPressed: onDuplicate,
-                                        variant: AppButtonVariant.outline,
-                                        size: AppButtonSize.small,
-                                        expands: true,
-                                        lightBackgroundColor: Colors.purple.shade50,
-                                        darkBackgroundColor: Colors.purple.shade300,
-                                        lightForegroundColor: Colors.purple.shade900,
-                                        darkForegroundColor: Colors.purple.shade900,
-                                        lightBorderColor: Colors.purple.shade200,
-                                        darkBorderColor: Colors.purple.shade200,
-                                        leading: const Icon(Icons.copy, size: 14),
-                                        child: const Text('Duplicate'),
-                                      ),
-                                    ),
-                                  if (onAddStock != null)
-                                    SizedBox(
-                                      width: 100,
-                                      child: AppButton(
-                                        onPressed: onAddStock,
-                                        variant: AppButtonVariant.outline,
-                                        size: AppButtonSize.small,
-                                        expands: true,
-                                        lightBackgroundColor: Colors.green.shade50,
-                                        darkBackgroundColor: Colors.green.shade300,
-                                        lightForegroundColor: Colors.green.shade900,
-                                        darkForegroundColor: Colors.green.shade900,
-                                        lightBorderColor: Colors.green.shade200,
-                                        darkBorderColor: Colors.green.shade200,
-                                        leading: const Icon(Icons.add_box_outlined, size: 14),
-                                        child: const Text('Add Stock'),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
                           ],
                         ],
                       ),
