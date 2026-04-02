@@ -82,8 +82,8 @@ class LocalNotificationService {
 
   Future<void> _configureLocalTimezone() async {
     try {
-      final timezoneName = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(timezoneName));
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
     } catch (_) {
       // Fall back to library default timezone if lookup fails.
     }
