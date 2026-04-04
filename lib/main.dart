@@ -1,9 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/dashboard/presentation/widgets/dashboard_alert_banner.dart';
 import 'features/dashboard/presentation/widgets/preparedness_score_card.dart';
+import 'features/emergency_contacts/data/models/contact.dart';
+import 'features/emergency_contacts/data/repositories/contact_repository.dart';
+import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
+import 'features/emergency_contacts/presentation/pages/safety_status_page.dart';
+import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
+import 'features/supply_tracker/data/models/supply_item.dart';
+import 'features/supply_tracker/data/repositories/supply_repository.dart';
+import 'shared/services/local_notification_service.dart';
 import 'shared/shared.dart';
+import 'splash/logo_splash_screen.dart';
 
-void main() {
+late SupplyRepository _supplyRepository;
+late ContactRepository _contactRepository;
+late LocalNotificationService _localNotificationService;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+
+  // Register Hive adapters
+  Hive.registerAdapter(SupplyItemAdapter());
+  Hive.registerAdapter(ContactAdapter());
+
+  // Initialize SupplyRepository
+  _supplyRepository = SupplyRepository();
+  await _supplyRepository.initBox();
+
+  // Initialize ContactRepository
+  _contactRepository = ContactRepository();
+  await _contactRepository.initBox();
+  await _contactRepository.seedIfNeeded();
+
+  // Initialize local notification service
+  _localNotificationService = LocalNotificationService.instance;
+  await _localNotificationService.initialize();
+
   runApp(const MyApp());
 }
 
@@ -30,15 +67,40 @@ class _MyAppState extends State<MyApp> {
       themeMode: _themeMode,
       theme: BihonTheme.light(),
       darkTheme: BihonTheme.dark(),
-      home: const Scaffold(
-        backgroundColor: Color(0xFFF4F4F5),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: PreparednessScoreCard(),
-          ),
-        ),
-      ),
+      home: const LogoSplashScreen(),
+      onGenerateRoute: (settings) {
+        if (settings.name == '/home') {
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return ShadToaster(
+                child: HomePage(
+                  themeMode: _themeMode,
+                  onThemeChanged: _onThemeChanged,
+                ),
+              );
+            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+            transitionDuration: const Duration(milliseconds: 500),
+          );
+        }
+        if (settings.name == '/contacts') {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const ContactsPage(),
+          );
+        }
+        if (settings.name == '/safety-status') {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const SafetyStatusPage(),
+          );
+        }
+        return null;
+      },
     );
   }
 }
@@ -57,8 +119,22 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Project Bihon'),
+        title: const Text('Crisync'),
         actions: [
+          IconButton(
+            tooltip: 'Emergency Contacts',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/contacts');
+            },
+            icon: const Icon(Icons.contacts_outlined),
+          ),
+          IconButton(
+            tooltip: 'Safety Status',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/safety-status');
+            },
+            icon: const Icon(Icons.sms_outlined),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
@@ -71,7 +147,32 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(child: Text('Clean slate ready. Start building!')),
+      body: Column(
+        children: const [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PreparednessScoreCard(),
+                SizedBox(height: 12),
+                DashboardAlertBanner(),
+              ],
+            ),
+          ),
+          Expanded(child: SupplyTrackerPage()),
+        ],
+      ),
     );
   }
 }
+
+/// Global getter to access the SupplyRepository from anywhere in the app.
+SupplyRepository getSupplyRepository() => _supplyRepository;
+
+/// Global getter to access the ContactRepository from anywhere in the app.
+ContactRepository getContactRepository() => _contactRepository;
+
+/// Global getter to access local notifications from anywhere in the app.
+LocalNotificationService getLocalNotificationService() =>
+    _localNotificationService;
