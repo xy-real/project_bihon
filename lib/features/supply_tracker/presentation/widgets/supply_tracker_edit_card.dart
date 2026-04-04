@@ -256,7 +256,7 @@ class _SupplyTrackerEditCardState extends State<SupplyTrackerEditCard> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               onChanged: _isSubmitting
                   ? null
                   : (value) {
