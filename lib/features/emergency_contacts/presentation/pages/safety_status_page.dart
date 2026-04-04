@@ -5,6 +5,7 @@ import 'package:project_bihon/features/emergency_contacts/data/repositories/cont
 import 'package:project_bihon/features/emergency_contacts/domain/contact_validation.dart';
 import 'package:project_bihon/main.dart' show getContactRepository;
 import 'package:project_bihon/shared/widgets/app_toast.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SafetyStatusPage extends StatefulWidget {
   const SafetyStatusPage({super.key});
@@ -66,8 +67,13 @@ class _SafetyStatusPageState extends State<SafetyStatusPage> {
     });
   }
 
-  void _handleSend() {
+  Future<void> _handleSend() async {
     if (_selectedRecipientIds.isEmpty || _selectedTemplate == null) {
+      AppToast.error(
+        context,
+        title: 'No recipients selected',
+        message: 'Select at least one contact before sending.',
+      );
       return;
     }
 
@@ -76,18 +82,55 @@ class _SafetyStatusPageState extends State<SafetyStatusPage> {
         .where((contact) => _selectedRecipientIds.contains(contact.id))
         .toList();
 
+    if (selectedContacts.isEmpty) {
+      AppToast.error(
+        context,
+        title: 'No recipients selected',
+        message: 'Selected contacts are no longer available. Please select again.',
+      );
+      return;
+    }
+
     final smsUri = _buildSmsComposeUri(
       selectedContacts,
       _selectedTemplate!,
     );
 
-    debugPrint('Prepared SMS URI: $smsUri');
+    try {
+      final canLaunch = await canLaunchUrl(smsUri);
+      if (!canLaunch) {
+        if (mounted) {
+          AppToast.error(
+            context,
+            title: 'Launcher unavailable',
+            message: 'No SMS app is available to open compose.',
+          );
+        }
+        return;
+      }
 
-    AppToast.success(
-      context,
-      title: 'Safety status ready',
-      message: '${selectedContacts.length} recipient(s) prepared for SMS compose.',
-    );
+      final launched = await launchUrl(
+        smsUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        AppToast.error(
+          context,
+          title: 'SMS compose canceled',
+          message: 'SMS compose was not opened. Please try again.',
+        );
+        return;
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.errorFromException(
+          context,
+          title: 'Failed to launch SMS compose',
+          error: error,
+        );
+      }
+    }
   }
 
   Uri _buildSmsComposeUri(List<Contact> recipients, String templateMessage) {
