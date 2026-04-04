@@ -93,6 +93,78 @@ class _ContactsPageState extends State<ContactsPage> {
     }
   }
 
+  Future<void> _deleteContact(Contact contact) async {
+    if (contact.isPreFilled) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Protected contact',
+          message: 'Pre-filled emergency contacts cannot be deleted.',
+        );
+      }
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Contact'),
+          content: Text('Delete ${contact.name}? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _repository.deleteContact(contact.id);
+      if (mounted) {
+        AppToast.success(
+          context,
+          title: 'Contact deleted',
+          message: ContactValidation.normalizeName(contact.name),
+        );
+      }
+    } on ContactPrefilledDeleteException {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Protected contact',
+          message: 'Pre-filled emergency contacts cannot be deleted.',
+        );
+      }
+    } on ContactNotFoundException catch (error) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Contact missing',
+          message: error.message,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.errorFromException(
+          context,
+          title: 'Failed to delete contact',
+          error: error,
+        );
+      }
+    }
+  }
+
   Widget _buildContactTile(Contact contact) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -123,6 +195,12 @@ class _ContactsPageState extends State<ContactsPage> {
             onPressed: () => _showEditContactModal(contact),
             icon: Icon(contact.isPreFilled ? Icons.visibility_outlined : Icons.edit_outlined),
           ),
+          if (!contact.isPreFilled)
+            IconButton(
+              tooltip: 'Delete contact',
+              onPressed: () => _deleteContact(contact),
+              icon: const Icon(Icons.delete_outline),
+            ),
         ],
       ),
     );
