@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/emergency_contacts/data/models/contact.dart';
+import 'features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
 import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
@@ -9,6 +11,7 @@ import 'shared/shared.dart';
 import 'splash/logo_splash_screen.dart';
 
 late SupplyRepository _supplyRepository;
+late ContactRepository _contactRepository;
 late LocalNotificationService _localNotificationService;
 
 void main() async {
@@ -19,10 +22,16 @@ void main() async {
 
   // Register Hive adapters
   Hive.registerAdapter(SupplyItemAdapter());
+  Hive.registerAdapter(ContactAdapter());
 
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
   await _supplyRepository.initBox();
+
+  // Initialize ContactRepository
+  _contactRepository = ContactRepository();
+  await _contactRepository.initBox();
+  await _contactRepository.seedIfNeeded();
 
   // Initialize local notification service
   _localNotificationService = LocalNotificationService.instance;
@@ -117,6 +126,9 @@ class HomePage extends StatelessWidget {
 
 /// Global getter to access the SupplyRepository from anywhere in the app.
 SupplyRepository getSupplyRepository() => _supplyRepository;
+
+/// Global getter to access the ContactRepository from anywhere in the app.
+ContactRepository getContactRepository() => _contactRepository;
 
 /// Global getter to access local notifications from anywhere in the app.
 LocalNotificationService getLocalNotificationService() => _localNotificationService;
