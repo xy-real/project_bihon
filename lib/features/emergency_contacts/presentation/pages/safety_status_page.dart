@@ -4,6 +4,7 @@ import 'package:project_bihon/features/emergency_contacts/data/models/contact.da
 import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'package:project_bihon/features/emergency_contacts/domain/contact_validation.dart';
 import 'package:project_bihon/main.dart' show getContactRepository;
+import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:project_bihon/shared/widgets/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -234,10 +235,12 @@ class _SafetyStatusPageState extends State<SafetyStatusPage> {
                 top: false,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: FilledButton.icon(
+                  child: AppButton(
                     onPressed: canSend ? _handleSend : null,
-                    icon: const Icon(Icons.sms_outlined),
-                    label: Text('Send Safety Status ($selectedCount)'),
+                    enabled: canSend,
+                    expands: true,
+                    leading: const Icon(Icons.sms_outlined),
+                    child: Text('Send Safety Status ($selectedCount)'),
                   ),
                 ),
               ),

@@ -68,33 +68,41 @@ class _MyAppState extends State<MyApp> {
       home: const LogoSplashScreen(),
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
-          return PageRouteBuilder(
-            settings: settings,
-            pageBuilder: (context, animation, secondaryAnimation) {
-              return ShadToaster(
-                child: HomePage(
-                  themeMode: _themeMode,
-                  onThemeChanged: _onThemeChanged,
-                ),
-              );
-            },
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 500),
-          );
+          return _buildHomeRoute(settings, initialTabIndex: 0);
         }
         if (settings.name == '/contacts') {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (context) => const ContactsPage(),
-          );
+          return _buildHomeRoute(settings, initialTabIndex: 1);
+        }
+        if (settings.name == '/safety-status') {
+          return _buildHomeRoute(settings, initialTabIndex: 2);
         }
         return null;
       },
+    );
+  }
+
+  PageRouteBuilder<void> _buildHomeRoute(
+    RouteSettings settings, {
+    required int initialTabIndex,
+  }) {
+    return PageRouteBuilder<void>(
+      settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return ShadToaster(
+          child: HomePage(
+            themeMode: _themeMode,
+            onThemeChanged: _onThemeChanged,
+            initialTabIndex: initialTabIndex,
+          ),
+        );
+      },
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: child,
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 500),
     );
   }
 }
@@ -102,11 +110,13 @@ class _MyAppState extends State<MyApp> {
 class HomePage extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeChanged;
+  final int initialTabIndex;
 
   const HomePage({
     super.key,
     required this.themeMode,
     required this.onThemeChanged,
+    this.initialTabIndex = 0,
   });
 
   @override
@@ -114,7 +124,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedTabIndex = 0;
+  late int _selectedTabIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTabIndex = widget.initialTabIndex.clamp(0, 2);
+  }
 
   void _onTabSelected(int index) {
     setState(() {
