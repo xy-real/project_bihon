@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/features/emergency_contacts/data/models/contact.dart';
 import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository.dart';
+import 'package:project_bihon/features/emergency_contacts/domain/contact_validation.dart';
 import 'package:project_bihon/main.dart' show getContactRepository;
 import 'package:project_bihon/shared/widgets/app_toast.dart';
 
@@ -13,6 +14,8 @@ class SafetyStatusPage extends StatefulWidget {
 }
 
 class _SafetyStatusPageState extends State<SafetyStatusPage> {
+  static const String _messageSuffix = ' - Sent via Crisync Offline Alert.';
+
   static const List<String> _allowedRecipientTypes = [
     'Family',
     'Barangay Official',
@@ -68,11 +71,33 @@ class _SafetyStatusPageState extends State<SafetyStatusPage> {
       return;
     }
 
+    final selectedContacts = _repository
+        .getAllContacts()
+        .where((contact) => _selectedRecipientIds.contains(contact.id))
+        .toList();
+
+    final smsUri = _buildSmsComposeUri(
+      selectedContacts,
+      _selectedTemplate!,
+    );
+
+    debugPrint('Prepared SMS URI: $smsUri');
+
     AppToast.success(
       context,
       title: 'Safety status ready',
-      message:
-          '${_selectedRecipientIds.length} recipient(s) selected. SMS compose will be wired in Phase 7.',
+      message: '${selectedContacts.length} recipient(s) prepared for SMS compose.',
+    );
+  }
+
+  Uri _buildSmsComposeUri(List<Contact> recipients, String templateMessage) {
+    final joinedRecipients = recipients
+        .map((contact) => ContactValidation.normalizePhone(contact.phoneNumber))
+        .join(',');
+    final finalMessage = '$templateMessage$_messageSuffix';
+
+    return Uri.parse(
+      'sms:$joinedRecipients?body=${Uri.encodeComponent(finalMessage)}',
     );
   }
 
