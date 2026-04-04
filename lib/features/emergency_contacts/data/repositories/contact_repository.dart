@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/features/emergency_contacts/data/models/contact.dart';
+import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository_exceptions.dart';
 
 class ContactRepository {
   static const String boxName = 'contact_box';
@@ -76,34 +77,58 @@ class ContactRepository {
   }
 
   Future<void> addContact(Contact contact) async {
+    if (contact.id.trim().isEmpty) {
+      throw const ContactInvalidOperationException('Contact id cannot be empty.');
+    }
+
     final normalized = _normalizePhone(contact.phoneNumber);
+    if (normalized.isEmpty) {
+      throw const ContactInvalidOperationException('Phone number cannot be empty.');
+    }
+
     final duplicate = _box.values.any(
       (existing) => _normalizePhone(existing.phoneNumber) == normalized,
     );
     if (duplicate) {
-      throw StateError('A contact with this phone number already exists.');
+      throw const ContactDuplicatePhoneException();
     }
     await _box.put(contact.id, contact);
   }
 
   Future<void> updateContact(Contact contact) async {
+    if (contact.id.trim().isEmpty) {
+      throw const ContactInvalidOperationException('Contact id cannot be empty.');
+    }
+
+    if (!_box.containsKey(contact.id)) {
+      throw ContactNotFoundException(contact.id);
+    }
+
     final normalized = _normalizePhone(contact.phoneNumber);
+    if (normalized.isEmpty) {
+      throw const ContactInvalidOperationException('Phone number cannot be empty.');
+    }
+
     final duplicate = _box.values.any(
       (existing) => existing.id != contact.id && _normalizePhone(existing.phoneNumber) == normalized,
     );
     if (duplicate) {
-      throw StateError('A contact with this phone number already exists.');
+      throw const ContactDuplicatePhoneException();
     }
     await _box.put(contact.id, contact);
   }
 
   Future<void> deleteContact(String id) async {
+    if (id.trim().isEmpty) {
+      throw const ContactInvalidOperationException('Contact id cannot be empty.');
+    }
+
     final existing = _box.get(id);
     if (existing == null) {
-      return;
+      throw ContactNotFoundException(id);
     }
     if (existing.isPreFilled) {
-      throw StateError('Pre-filled emergency contacts cannot be deleted.');
+      throw const ContactPrefilledDeleteException();
     }
     await _box.delete(id);
   }
