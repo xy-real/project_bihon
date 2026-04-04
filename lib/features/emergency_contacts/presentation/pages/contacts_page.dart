@@ -6,6 +6,7 @@ import 'package:project_bihon/features/emergency_contacts/data/repositories/cont
 import 'package:project_bihon/features/emergency_contacts/domain/contact_validation.dart';
 import 'package:project_bihon/main.dart' show getContactRepository;
 import 'package:project_bihon/shared/widgets/app_toast.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 class ContactsPage extends StatefulWidget {
@@ -68,6 +69,30 @@ class _ContactsPageState extends State<ContactsPage> {
     return [...inKnownOrder, ...unknown];
   }
 
+  Future<void> _callContact(Contact contact) async {
+    final normalizedPhone = ContactValidation.normalizePhone(contact.phoneNumber);
+    final uri = Uri.parse('tel:$normalizedPhone');
+
+    try {
+      final launched = await launchUrl(uri);
+      if (!launched && mounted) {
+        AppToast.error(
+          context,
+          title: 'Call unavailable',
+          message: 'No dialer is available for this device.',
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.errorFromException(
+          context,
+          title: 'Failed to start call',
+          error: error,
+        );
+      }
+    }
+  }
+
   Widget _buildContactTile(Contact contact) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -88,7 +113,11 @@ class _ContactsPageState extends State<ContactsPage> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.phone_outlined),
+          IconButton(
+            tooltip: 'Call contact',
+            onPressed: () => _callContact(contact),
+            icon: const Icon(Icons.phone_outlined),
+          ),
           IconButton(
             tooltip: contact.isPreFilled ? 'View contact' : 'Edit contact',
             onPressed: () => _showEditContactModal(contact),
