@@ -210,8 +210,8 @@ class _ContactsPageState extends State<ContactsPage> {
     final updatedContactName = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       builder: (sheetContext) {
         return _EditContactSheet(
           repository: _repository,
@@ -233,8 +233,8 @@ class _ContactsPageState extends State<ContactsPage> {
     final addedContactName = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       builder: (sheetContext) {
         return _AddContactSheet(
           repository: _repository,
