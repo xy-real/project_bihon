@@ -207,397 +207,41 @@ class _ContactsPageState extends State<ContactsPage> {
   }
 
   Future<void> _showEditContactModal(Contact existingContact) async {
-    final isReadOnly = existingContact.isPreFilled;
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController(text: existingContact.name);
-    final phoneController = TextEditingController(text: existingContact.phoneNumber);
-    String? selectedType = existingContact.type;
-    bool isSubmitting = false;
-
-    await showModalBottomSheet<void>(
+    final updatedContactName = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
       enableDrag: false,
       builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            Future<void> submit() async {
-              var didCloseSheet = false;
-
-              if (isReadOnly || isSubmitting) {
-                return;
-              }
-
-              if (!(formKey.currentState?.validate() ?? false)) {
-                return;
-              }
-
-              setSheetState(() {
-                isSubmitting = true;
-              });
-
-              try {
-                final updatedContact = Contact(
-                  id: existingContact.id,
-                  name: nameController.text,
-                  phoneNumber: phoneController.text,
-                  type: selectedType!,
-                  isPreFilled: existingContact.isPreFilled,
-                );
-
-                await _repository.updateContact(updatedContact);
-
-                if (mounted && sheetContext.mounted) {
-                  didCloseSheet = true;
-                  Navigator.of(sheetContext).pop();
-                  AppToast.success(
-                    this.context,
-                    title: 'Contact updated',
-                    message: ContactValidation.normalizeName(updatedContact.name),
-                  );
-                }
-              } on ContactDuplicatePhoneException {
-                if (mounted) {
-                  AppToast.error(
-                    this.context,
-                    title: 'Duplicate contact',
-                    message: 'A contact with this phone number already exists.',
-                  );
-                }
-              } on ContactInvalidOperationException catch (error) {
-                if (mounted) {
-                  AppToast.error(
-                    this.context,
-                    title: 'Invalid contact',
-                    message: error.message,
-                  );
-                }
-              } on ContactNotFoundException catch (error) {
-                if (mounted) {
-                  AppToast.error(
-                    this.context,
-                    title: 'Contact missing',
-                    message: error.message,
-                  );
-                }
-              } catch (error) {
-                if (mounted) {
-                  AppToast.errorFromException(
-                    this.context,
-                    title: 'Failed to update contact',
-                    error: error,
-                  );
-                }
-              } finally {
-                if (!didCloseSheet && sheetContext.mounted) {
-                  setSheetState(() {
-                    isSubmitting = false;
-                  });
-                }
-              }
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
-              ),
-              child: SafeArea(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isReadOnly ? 'View Contact' : 'Edit Contact',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      if (isReadOnly) ...[
-                        const SizedBox(height: 6),
-                        const Text('This emergency contact is prefilled and read-only.'),
-                      ],
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: nameController,
-                        enabled: !isSubmitting && !isReadOnly,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(labelText: 'Name'),
-                        validator: (value) {
-                          final raw = value ?? '';
-                          if (!ContactValidation.isValidName(raw)) {
-                            return 'Enter at least 2 visible characters.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: phoneController,
-                        enabled: !isSubmitting && !isReadOnly,
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
-                        ),
-                        validator: (value) {
-                          final raw = value ?? '';
-                          if (!ContactValidation.isValidPhone(raw)) {
-                            return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedType,
-                        decoration: const InputDecoration(labelText: 'Type'),
-                        items: ContactValidation.allowedTypes
-                            .map(
-                              (type) => DropdownMenuItem<String>(
-                                value: type,
-                                child: Text(type),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: isSubmitting || isReadOnly
-                            ? null
-                            : (value) {
-                                setSheetState(() {
-                                  selectedType = value;
-                                });
-                              },
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Select a contact type.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isSubmitting
-                                  ? null
-                                  : () => Navigator.of(sheetContext).pop(),
-                              child: Text(isReadOnly ? 'Close' : 'Cancel'),
-                            ),
-                          ),
-                          if (!isReadOnly) ...[
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: FilledButton(
-                                onPressed: isSubmitting ? null : submit,
-                                child: Text(isSubmitting ? 'Saving...' : 'Save Changes'),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
+        return _EditContactSheet(
+          repository: _repository,
+          existingContact: existingContact,
         );
       },
     );
 
-    nameController.dispose();
-    phoneController.dispose();
+    if (updatedContactName != null && mounted) {
+      AppToast.success(
+        context,
+        title: 'Contact updated',
+        message: updatedContactName,
+      );
+    }
   }
 
   Future<void> _showAddContactModal() async {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    String? selectedType;
-    bool isSubmitting = false;
-
     final addedContactName = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
       enableDrag: false,
       builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            Future<void> submit() async {
-              if (isSubmitting) {
-                return;
-              }
-
-              if (!(formKey.currentState?.validate() ?? false)) {
-                return;
-              }
-
-              setSheetState(() {
-                isSubmitting = true;
-              });
-
-              try {
-                final contact = Contact(
-                  id: _uuid.v4(),
-                  name: nameController.text,
-                  phoneNumber: phoneController.text,
-                  type: selectedType!,
-                );
-
-                await _repository.addContact(contact);
-
-                if (sheetContext.mounted) {
-                  Navigator.of(
-                    sheetContext,
-                  ).pop(ContactValidation.normalizeName(contact.name));
-                }
-              } on ContactDuplicatePhoneException {
-                if (mounted) {
-                  AppToast.error(
-                    this.context,
-                    title: 'Duplicate contact',
-                    message: 'A contact with this phone number already exists.',
-                  );
-                }
-              } on ContactInvalidOperationException catch (error) {
-                if (mounted) {
-                  AppToast.error(
-                    this.context,
-                    title: 'Invalid contact',
-                    message: error.message,
-                  );
-                }
-              } catch (error) {
-                if (mounted) {
-                  AppToast.errorFromException(
-                    this.context,
-                    title: 'Failed to add contact',
-                    error: error,
-                  );
-                }
-              } finally {
-                if (sheetContext.mounted) {
-                  setSheetState(() {
-                    isSubmitting = false;
-                  });
-                }
-              }
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
-              ),
-              child: SafeArea(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Add Contact',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: nameController,
-                        enabled: !isSubmitting,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(labelText: 'Name'),
-                        validator: (value) {
-                          final raw = value ?? '';
-                          if (!ContactValidation.isValidName(raw)) {
-                            return 'Enter at least 2 visible characters.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: phoneController,
-                        enabled: !isSubmitting,
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
-                        ),
-                        validator: (value) {
-                          final raw = value ?? '';
-                          if (!ContactValidation.isValidPhone(raw)) {
-                            return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedType,
-                        decoration: const InputDecoration(labelText: 'Type'),
-                        items: ContactValidation.allowedTypes
-                            .map(
-                              (type) => DropdownMenuItem<String>(
-                                value: type,
-                                child: Text(type),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: isSubmitting
-                            ? null
-                            : (value) {
-                                setSheetState(() {
-                                  selectedType = value;
-                                });
-                              },
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Select a contact type.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isSubmitting
-                                  ? null
-                                  : () => Navigator.of(sheetContext).pop(),
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: isSubmitting ? null : submit,
-                              child: Text(isSubmitting ? 'Saving...' : 'Add Contact'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
+        return _AddContactSheet(
+          repository: _repository,
+          createId: _uuid.v4,
         );
       },
     );
-
-    nameController.dispose();
-    phoneController.dispose();
 
     if (addedContactName != null && mounted) {
       AppToast.success(
@@ -688,6 +332,436 @@ class _ContactsPageState extends State<ContactsPage> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _AddContactSheet extends StatefulWidget {
+  const _AddContactSheet({
+    required this.repository,
+    required this.createId,
+  });
+
+  final ContactRepository repository;
+  final String Function() createId;
+
+  @override
+  State<_AddContactSheet> createState() => _AddContactSheetState();
+}
+
+class _AddContactSheetState extends State<_AddContactSheet> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
+
+  String? _selectedType;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _phoneController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    var didCloseSheet = false;
+
+    try {
+      final contact = Contact(
+        id: widget.createId(),
+        name: _nameController.text,
+        phoneNumber: _phoneController.text,
+        type: _selectedType!,
+      );
+
+      await widget.repository.addContact(contact);
+
+      if (!mounted) {
+        return;
+      }
+
+      didCloseSheet = true;
+      Navigator.of(context).pop(ContactValidation.normalizeName(contact.name));
+    } on ContactDuplicatePhoneException {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Duplicate contact',
+          message: 'A contact with this phone number already exists.',
+        );
+      }
+    } on ContactInvalidOperationException catch (error) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Invalid contact',
+          message: error.message,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.errorFromException(
+          context,
+          title: 'Failed to add contact',
+          error: error,
+        );
+      }
+    } finally {
+      if (!didCloseSheet && mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: keyboardInset),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add Contact',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _nameController,
+                  enabled: !_isSubmitting,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  validator: (value) {
+                    final raw = value ?? '';
+                    if (!ContactValidation.isValidName(raw)) {
+                      return 'Enter at least 2 visible characters.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _phoneController,
+                  enabled: !_isSubmitting,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
+                  ),
+                  validator: (value) {
+                    final raw = value ?? '';
+                    if (!ContactValidation.isValidPhone(raw)) {
+                      return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedType,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: ContactValidation.allowedTypes
+                      .map(
+                        (type) => DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _isSubmitting
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _selectedType = value;
+                          });
+                        },
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Select a contact type.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed:
+                            _isSubmitting ? null : () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _isSubmitting ? null : _submit,
+                        child: Text(_isSubmitting ? 'Saving...' : 'Add Contact'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditContactSheet extends StatefulWidget {
+  const _EditContactSheet({
+    required this.repository,
+    required this.existingContact,
+  });
+
+  final ContactRepository repository;
+  final Contact existingContact;
+
+  @override
+  State<_EditContactSheet> createState() => _EditContactSheetState();
+}
+
+class _EditContactSheetState extends State<_EditContactSheet> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
+
+  late String? _selectedType;
+  bool _isSubmitting = false;
+
+  bool get _isReadOnly => widget.existingContact.isPreFilled;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.existingContact.name);
+    _phoneController = TextEditingController(text: widget.existingContact.phoneNumber);
+    _selectedType = widget.existingContact.type;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isReadOnly || _isSubmitting) {
+      return;
+    }
+
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    var didCloseSheet = false;
+
+    try {
+      final updatedContact = Contact(
+        id: widget.existingContact.id,
+        name: _nameController.text,
+        phoneNumber: _phoneController.text,
+        type: _selectedType!,
+        isPreFilled: widget.existingContact.isPreFilled,
+      );
+
+      await widget.repository.updateContact(updatedContact);
+
+      if (!mounted) {
+        return;
+      }
+
+      didCloseSheet = true;
+      Navigator.of(context).pop(ContactValidation.normalizeName(updatedContact.name));
+    } on ContactDuplicatePhoneException {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Duplicate contact',
+          message: 'A contact with this phone number already exists.',
+        );
+      }
+    } on ContactInvalidOperationException catch (error) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Invalid contact',
+          message: error.message,
+        );
+      }
+    } on ContactNotFoundException catch (error) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          title: 'Contact missing',
+          message: error.message,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.errorFromException(
+          context,
+          title: 'Failed to update contact',
+          error: error,
+        );
+      }
+    } finally {
+      if (!didCloseSheet && mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: keyboardInset),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isReadOnly ? 'View Contact' : 'Edit Contact',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                if (_isReadOnly) ...[
+                  const SizedBox(height: 6),
+                  const Text('This emergency contact is prefilled and read-only.'),
+                ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _nameController,
+                  enabled: !_isSubmitting && !_isReadOnly,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  validator: (value) {
+                    final raw = value ?? '';
+                    if (!ContactValidation.isValidName(raw)) {
+                      return 'Enter at least 2 visible characters.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _phoneController,
+                  enabled: !_isSubmitting && !_isReadOnly,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
+                  ),
+                  validator: (value) {
+                    final raw = value ?? '';
+                    if (!ContactValidation.isValidPhone(raw)) {
+                      return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedType,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: ContactValidation.allowedTypes
+                      .map(
+                        (type) => DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _isSubmitting || _isReadOnly
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _selectedType = value;
+                          });
+                        },
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Select a contact type.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed:
+                            _isSubmitting ? null : () => Navigator.of(context).pop(),
+                        child: Text(_isReadOnly ? 'Close' : 'Cancel'),
+                      ),
+                    ),
+                    if (!_isReadOnly) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _isSubmitting ? null : _submit,
+                          child: Text(_isSubmitting ? 'Saving...' : 'Save Changes'),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
