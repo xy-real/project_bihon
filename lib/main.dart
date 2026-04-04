@@ -4,6 +4,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/emergency_contacts/data/models/contact.dart';
 import 'features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
+import 'features/emergency_contacts/presentation/pages/safety_status_page.dart';
 import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
 import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
@@ -143,6 +144,7 @@ class _HomePageState extends State<HomePage> {
         body: const SupplyTrackerPage(),
       ),
       const ContactsPage(),
+      const SafetyStatusPage(),
     ];
 
     return Scaffold(
@@ -163,6 +165,11 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.contacts_outlined),
             selectedIcon: Icon(Icons.contacts),
             label: 'Contacts',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.sms_outlined),
+            selectedIcon: Icon(Icons.sms),
+            label: 'Safety',
           ),
         ],
       ),
