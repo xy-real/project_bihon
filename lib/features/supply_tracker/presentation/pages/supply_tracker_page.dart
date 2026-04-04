@@ -177,7 +177,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                     await _notificationService
                         .scheduleSupplyExpirationReminder(updatedItem);
 
-                    if (mounted) {
+                    if (mounted && dialogContext.mounted) {
                       Navigator.of(dialogContext).pop();
                       AppToast.success(
                         context,
@@ -567,7 +567,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: DropdownButtonFormField<SupplySortOption>(
-                      value: _selectedSortOption,
+                      initialValue: _selectedSortOption,
                       decoration: const InputDecoration(
                         isDense: true,
                         border: OutlineInputBorder(),
