@@ -98,7 +98,7 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeChanged;
 
@@ -109,31 +109,63 @@ class HomePage extends StatelessWidget {
   });
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _selectedTabIndex = 0;
+
+  void _onTabSelected(int index) {
+    setState(() {
+      _selectedTabIndex = index;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Crisync'),
-        actions: [
-          IconButton(
-            tooltip: 'Emergency Contacts',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/contacts');
-            },
-            icon: const Icon(Icons.contacts_outlined),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(
-              child: AppThemeSwitcher(
-                themeMode: themeMode,
-                onChanged: onThemeChanged,
-                showLabel: false,
+    final pages = <Widget>[
+      Scaffold(
+        appBar: AppBar(
+          title: const Text('Crisync'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Center(
+                child: AppThemeSwitcher(
+                  themeMode: widget.themeMode,
+                  onChanged: widget.onThemeChanged,
+                  showLabel: false,
+                ),
               ),
             ),
+          ],
+        ),
+        body: const SupplyTrackerPage(),
+      ),
+      const ContactsPage(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(
+        index: _selectedTabIndex,
+        children: pages,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedTabIndex,
+        onDestinationSelected: _onTabSelected,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.inventory_2_outlined),
+            selectedIcon: Icon(Icons.inventory_2),
+            label: 'Supplies',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.contacts_outlined),
+            selectedIcon: Icon(Icons.contacts),
+            label: 'Contacts',
           ),
         ],
       ),
-      body: const SupplyTrackerPage(),
     );
   }
 }
