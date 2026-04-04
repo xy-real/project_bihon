@@ -421,7 +421,7 @@ class _ContactsPageState extends State<ContactsPage> {
     String? selectedType;
     bool isSubmitting = false;
 
-    await showModalBottomSheet<void>(
+    final addedContactName = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
@@ -430,8 +430,6 @@ class _ContactsPageState extends State<ContactsPage> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             Future<void> submit() async {
-              var didCloseSheet = false;
-
               if (isSubmitting) {
                 return;
               }
@@ -454,14 +452,10 @@ class _ContactsPageState extends State<ContactsPage> {
 
                 await _repository.addContact(contact);
 
-                if (mounted && sheetContext.mounted) {
-                  didCloseSheet = true;
-                  Navigator.of(sheetContext).pop();
-                  AppToast.success(
-                    this.context,
-                    title: 'Contact added',
-                    message: ContactValidation.normalizeName(contact.name),
-                  );
+                if (sheetContext.mounted) {
+                  Navigator.of(
+                    sheetContext,
+                  ).pop(ContactValidation.normalizeName(contact.name));
                 }
               } on ContactDuplicatePhoneException {
                 if (mounted) {
@@ -488,7 +482,7 @@ class _ContactsPageState extends State<ContactsPage> {
                   );
                 }
               } finally {
-                if (!didCloseSheet && sheetContext.mounted) {
+                if (sheetContext.mounted) {
                   setSheetState(() {
                     isSubmitting = false;
                   });
@@ -604,6 +598,14 @@ class _ContactsPageState extends State<ContactsPage> {
 
     nameController.dispose();
     phoneController.dispose();
+
+    if (addedContactName != null && mounted) {
+      AppToast.success(
+        context,
+        title: 'Contact added',
+        message: addedContactName,
+      );
+    }
   }
 
   @override
