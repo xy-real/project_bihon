@@ -71,6 +71,7 @@ class _ContactsPageState extends State<ContactsPage> {
   Widget _buildContactTile(Contact contact) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      onTap: () => _showEditContactModal(contact),
       title: Row(
         children: [
           Expanded(child: Text(contact.name)),
@@ -84,8 +85,221 @@ class _ContactsPageState extends State<ContactsPage> {
       ),
       subtitle: Text(contact.phoneNumber),
       leading: const Icon(Icons.person_outline),
-      trailing: const Icon(Icons.phone_outlined),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.phone_outlined),
+          IconButton(
+            tooltip: contact.isPreFilled ? 'View contact' : 'Edit contact',
+            onPressed: () => _showEditContactModal(contact),
+            icon: Icon(contact.isPreFilled ? Icons.visibility_outlined : Icons.edit_outlined),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _showEditContactModal(Contact existingContact) async {
+    final isReadOnly = existingContact.isPreFilled;
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: existingContact.name);
+    final phoneController = TextEditingController(text: existingContact.phoneNumber);
+    String? selectedType = existingContact.type;
+    bool isSubmitting = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> submit() async {
+              if (isReadOnly || isSubmitting) {
+                return;
+              }
+
+              if (!(formKey.currentState?.validate() ?? false)) {
+                return;
+              }
+
+              setSheetState(() {
+                isSubmitting = true;
+              });
+
+              try {
+                final updatedContact = Contact(
+                  id: existingContact.id,
+                  name: nameController.text,
+                  phoneNumber: phoneController.text,
+                  type: selectedType!,
+                  isPreFilled: existingContact.isPreFilled,
+                );
+
+                await _repository.updateContact(updatedContact);
+
+                if (mounted && sheetContext.mounted) {
+                  Navigator.of(sheetContext).pop();
+                  AppToast.success(
+                    this.context,
+                    title: 'Contact updated',
+                    message: ContactValidation.normalizeName(updatedContact.name),
+                  );
+                }
+              } on ContactDuplicatePhoneException {
+                if (mounted) {
+                  AppToast.error(
+                    this.context,
+                    title: 'Duplicate contact',
+                    message: 'A contact with this phone number already exists.',
+                  );
+                }
+              } on ContactInvalidOperationException catch (error) {
+                if (mounted) {
+                  AppToast.error(
+                    this.context,
+                    title: 'Invalid contact',
+                    message: error.message,
+                  );
+                }
+              } on ContactNotFoundException catch (error) {
+                if (mounted) {
+                  AppToast.error(
+                    this.context,
+                    title: 'Contact missing',
+                    message: error.message,
+                  );
+                }
+              } catch (error) {
+                if (mounted) {
+                  AppToast.errorFromException(
+                    this.context,
+                    title: 'Failed to update contact',
+                    error: error,
+                  );
+                }
+              } finally {
+                if (sheetContext.mounted) {
+                  setSheetState(() {
+                    isSubmitting = false;
+                  });
+                }
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+              ),
+              child: SafeArea(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isReadOnly ? 'View Contact' : 'Edit Contact',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      if (isReadOnly) ...[
+                        const SizedBox(height: 6),
+                        const Text('This emergency contact is prefilled and read-only.'),
+                      ],
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: nameController,
+                        enabled: !isSubmitting && !isReadOnly,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(labelText: 'Name'),
+                        validator: (value) {
+                          final raw = value ?? '';
+                          if (!ContactValidation.isValidName(raw)) {
+                            return 'Enter at least 2 visible characters.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: phoneController,
+                        enabled: !isSubmitting && !isReadOnly,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
+                        ),
+                        validator: (value) {
+                          final raw = value ?? '';
+                          if (!ContactValidation.isValidPhone(raw)) {
+                            return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedType,
+                        decoration: const InputDecoration(labelText: 'Type'),
+                        items: ContactValidation.allowedTypes
+                            .map(
+                              (type) => DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(type),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: isSubmitting || isReadOnly
+                            ? null
+                            : (value) {
+                                setSheetState(() {
+                                  selectedType = value;
+                                });
+                              },
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Select a contact type.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () => Navigator.of(sheetContext).pop(),
+                              child: Text(isReadOnly ? 'Close' : 'Cancel'),
+                            ),
+                          ),
+                          if (!isReadOnly) ...[
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: isSubmitting ? null : submit,
+                                child: Text(isSubmitting ? 'Saving...' : 'Save Changes'),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    phoneController.dispose();
   }
 
   Future<void> _showAddContactModal() async {
