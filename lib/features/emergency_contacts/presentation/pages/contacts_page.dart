@@ -217,6 +217,8 @@ class _ContactsPageState extends State<ContactsPage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
@@ -419,6 +421,8 @@ class _ContactsPageState extends State<ContactsPage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
