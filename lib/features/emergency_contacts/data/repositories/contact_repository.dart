@@ -2,67 +2,60 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/features/emergency_contacts/data/models/contact.dart';
 import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository_exceptions.dart';
+import 'package:project_bihon/features/emergency_contacts/data/seeds/baybay_emergency_contact_seeds.dart';
 import 'package:project_bihon/features/emergency_contacts/domain/contact_validation.dart';
 
 class ContactRepository {
   static const String boxName = 'contact_box';
   late Box<Contact> _box;
 
-  static final List<Contact> _seedContacts = [
-    Contact(
-      id: 'baybay_cdrrmo',
-      name: 'Baybay CDRRMO',
-      phoneNumber: '09171234567',
-      type: 'Barangay Official',
-      isPreFilled: true,
-    ),
-    Contact(
-      id: 'baybay_police',
-      name: 'Baybay City Police',
-      phoneNumber: '09181234567',
-      type: 'Rescue Team',
-      isPreFilled: true,
-    ),
-    Contact(
-      id: 'baybay_fire',
-      name: 'Baybay Fire Station',
-      phoneNumber: '09191234567',
-      type: 'Rescue Team',
-      isPreFilled: true,
-    ),
-    Contact(
-      id: 'baybay_hospital',
-      name: 'Baybay District Hospital',
-      phoneNumber: '09201234567',
-      type: 'Hospital',
-      isPreFilled: true,
-    ),
-  ];
-
   Future<void> initBox() async {
     _box = await Hive.openBox<Contact>(boxName);
   }
 
   Future<void> seedIfNeeded() async {
-    if (_box.isEmpty) {
-      for (final seed in _seedContacts) {
-        await _box.put(seed.id, seed);
-      }
-      return;
-    }
+    final seeds = BaybayEmergencyContactSeeds.build();
+    for (final seed in seeds) {
+      final normalizedSeedPhone = ContactValidation.normalizePhone(seed.phoneNumber);
 
-    // Idempotent seeding for upgrades: no duplicates by id or normalized number.
-    final existingById = _box.values.map((c) => c.id).toSet();
-    final existingByPhone = _box.values
-      .map((c) => ContactValidation.normalizePhone(c.phoneNumber))
-      .toSet();
-
-    for (final seed in _seedContacts) {
-      final normalized = ContactValidation.normalizePhone(seed.phoneNumber);
-      if (existingById.contains(seed.id) || existingByPhone.contains(normalized)) {
+      if (_box.containsKey(seed.id)) {
+        await _box.put(
+          seed.id,
+          Contact(
+            id: seed.id,
+            name: ContactValidation.normalizeName(seed.name),
+            phoneNumber: normalizedSeedPhone,
+            type: seed.type.trim(),
+            isPreFilled: true,
+          ),
+        );
         continue;
       }
-      await _box.put(seed.id, seed);
+
+      final keyByPhone = _findBoxKeyByNormalizedPhone(normalizedSeedPhone);
+      if (keyByPhone != null) {
+        final existing = _box.get(keyByPhone);
+        if (existing != null) {
+          existing
+            ..name = ContactValidation.normalizeName(seed.name)
+            ..phoneNumber = normalizedSeedPhone
+            ..type = seed.type.trim()
+            ..isPreFilled = true;
+          await _box.put(keyByPhone, existing);
+          continue;
+        }
+      }
+
+      await _box.put(
+        seed.id,
+        Contact(
+          id: seed.id,
+          name: ContactValidation.normalizeName(seed.name),
+          phoneNumber: normalizedSeedPhone,
+          type: seed.type.trim(),
+          isPreFilled: true,
+        ),
+      );
     }
   }
 
@@ -187,5 +180,15 @@ class ContactRepository {
 
   Future<void> closeBox() async {
     await _box.close();
+  }
+
+  dynamic _findBoxKeyByNormalizedPhone(String normalizedPhone) {
+    for (final entry in _box.toMap().entries) {
+      final existingPhone = ContactValidation.normalizePhone(entry.value.phoneNumber);
+      if (existingPhone == normalizedPhone) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 }
