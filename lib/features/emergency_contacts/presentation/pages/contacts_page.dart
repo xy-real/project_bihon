@@ -223,6 +223,8 @@ class _ContactsPageState extends State<ContactsPage> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             Future<void> submit() async {
+              var didCloseSheet = false;
+
               if (isReadOnly || isSubmitting) {
                 return;
               }
@@ -247,6 +249,7 @@ class _ContactsPageState extends State<ContactsPage> {
                 await _repository.updateContact(updatedContact);
 
                 if (mounted && sheetContext.mounted) {
+                  didCloseSheet = true;
                   Navigator.of(sheetContext).pop();
                   AppToast.success(
                     this.context,
@@ -287,7 +290,7 @@ class _ContactsPageState extends State<ContactsPage> {
                   );
                 }
               } finally {
-                if (sheetContext.mounted) {
+                if (!didCloseSheet && sheetContext.mounted) {
                   setSheetState(() {
                     isSubmitting = false;
                   });
@@ -427,6 +430,8 @@ class _ContactsPageState extends State<ContactsPage> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             Future<void> submit() async {
+              var didCloseSheet = false;
+
               if (isSubmitting) {
                 return;
               }
@@ -450,6 +455,7 @@ class _ContactsPageState extends State<ContactsPage> {
                 await _repository.addContact(contact);
 
                 if (mounted && sheetContext.mounted) {
+                  didCloseSheet = true;
                   Navigator.of(sheetContext).pop();
                   AppToast.success(
                     this.context,
@@ -482,7 +488,7 @@ class _ContactsPageState extends State<ContactsPage> {
                   );
                 }
               } finally {
-                if (sheetContext.mounted) {
+                if (!didCloseSheet && sheetContext.mounted) {
                   setSheetState(() {
                     isSubmitting = false;
                   });
