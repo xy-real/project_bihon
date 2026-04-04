@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/emergency_contacts/data/models/contact.dart';
 import 'features/emergency_contacts/data/repositories/contact_repository.dart';
+import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
 import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
 import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
@@ -85,6 +86,12 @@ class _MyAppState extends State<MyApp> {
             transitionDuration: const Duration(milliseconds: 500),
           );
         }
+        if (settings.name == '/contacts') {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const ContactsPage(),
+          );
+        }
         return null;
       },
     );
@@ -107,6 +114,13 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Crisync'),
         actions: [
+          IconButton(
+            tooltip: 'Emergency Contacts',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/contacts');
+            },
+            icon: const Icon(Icons.contacts_outlined),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
