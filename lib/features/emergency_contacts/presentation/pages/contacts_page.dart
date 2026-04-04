@@ -303,7 +303,12 @@ class _ContactsPageState extends State<ContactsPage> {
                 child: types.isEmpty
                     ? const Center(child: Text('No contacts found.'))
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          8,
+                          16,
+                          96 + MediaQuery.paddingOf(context).bottom,
+                        ),
                         itemCount: types.length,
                         itemBuilder: (context, index) {
                           final type = types[index];
