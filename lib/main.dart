@@ -68,127 +68,86 @@ class _MyAppState extends State<MyApp> {
       home: const LogoSplashScreen(),
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
-          return _buildHomeRoute(settings, initialTabIndex: 0);
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return ShadToaster(
+                child: HomePage(
+                  themeMode: _themeMode,
+                  onThemeChanged: _onThemeChanged,
+                ),
+              );
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          );
         }
         if (settings.name == '/contacts') {
-          return _buildHomeRoute(settings, initialTabIndex: 1);
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const ContactsPage(),
+          );
         }
         if (settings.name == '/safety-status') {
-          return _buildHomeRoute(settings, initialTabIndex: 2);
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const SafetyStatusPage(),
+          );
         }
         return null;
       },
     );
   }
-
-  PageRouteBuilder<void> _buildHomeRoute(
-    RouteSettings settings, {
-    required int initialTabIndex,
-  }) {
-    return PageRouteBuilder<void>(
-      settings: settings,
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return ShadToaster(
-          child: HomePage(
-            themeMode: _themeMode,
-            onThemeChanged: _onThemeChanged,
-            initialTabIndex: initialTabIndex,
-          ),
-        );
-      },
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 500),
-    );
-  }
 }
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeChanged;
-  final int initialTabIndex;
 
   const HomePage({
     super.key,
     required this.themeMode,
     required this.onThemeChanged,
-    this.initialTabIndex = 0,
   });
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  late int _selectedTabIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTabIndex = widget.initialTabIndex.clamp(0, 2);
-  }
-
-  void _onTabSelected(int index) {
-    setState(() {
-      _selectedTabIndex = index;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final pages = <Widget>[
-      Scaffold(
-        appBar: AppBar(
-          title: const Text('Crisync'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Center(
-                child: AppThemeSwitcher(
-                  themeMode: widget.themeMode,
-                  onChanged: widget.onThemeChanged,
-                  showLabel: false,
-                ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Crisync'),
+        actions: [
+          IconButton(
+            tooltip: 'Emergency Contacts',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/contacts');
+            },
+            icon: const Icon(Icons.contacts_outlined),
+          ),
+          IconButton(
+            tooltip: 'Safety Status',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/safety-status');
+            },
+            icon: const Icon(Icons.sms_outlined),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Center(
+              child: AppThemeSwitcher(
+                themeMode: themeMode,
+                onChanged: onThemeChanged,
+                showLabel: false,
               ),
             ),
-          ],
-        ),
-        body: const SupplyTrackerPage(),
-      ),
-      const ContactsPage(),
-      const SafetyStatusPage(),
-    ];
-
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedTabIndex,
-        children: pages,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedTabIndex,
-        onDestinationSelected: _onTabSelected,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
-            label: 'Supplies',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.contacts_outlined),
-            selectedIcon: Icon(Icons.contacts),
-            label: 'Contacts',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.sms_outlined),
-            selectedIcon: Icon(Icons.sms),
-            label: 'Safety',
           ),
         ],
       ),
+      body: const SupplyTrackerPage(),
     );
   }
 }
