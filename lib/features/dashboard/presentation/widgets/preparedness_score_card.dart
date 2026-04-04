@@ -76,12 +76,15 @@ class PreparednessScoreCard extends StatelessWidget {
           AppButton(
             variant: AppButtonVariant.secondary,
             onPressed: onImprove,
+            lightBackgroundColor: const Color(0xFFFFEDD5),
+            darkBackgroundColor: Colors.white,
+            lightForegroundColor: const Color(0xFF7C2D12),
+            darkForegroundColor: const Color(0xFF7C2D12),
+            lightBorderColor: Colors.white,
+            darkBorderColor: Colors.white,
             child: const Text(
               'Improve Score',
-              style: TextStyle(
-                color: Color(0xFF7C2D12),
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
