@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/dashboard/presentation/widgets/preparedness_score_card.dart';
 import 'shared/shared.dart';
 
 void main() {
@@ -29,9 +30,14 @@ class _MyAppState extends State<MyApp> {
       themeMode: _themeMode,
       theme: BihonTheme.light(),
       darkTheme: BihonTheme.dark(),
-      home: HomePage(
-        themeMode: _themeMode,
-        onThemeChanged: _onThemeChanged,
+      home: const Scaffold(
+        backgroundColor: Color(0xFFF4F4F5),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: PreparednessScoreCard(),
+          ),
+        ),
       ),
     );
   }
