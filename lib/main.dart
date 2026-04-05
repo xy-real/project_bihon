@@ -1,122 +1,162 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/emergency_contacts/data/models/contact.dart';
+import 'features/emergency_contacts/data/repositories/contact_repository.dart';
+import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
+import 'features/emergency_contacts/presentation/pages/safety_status_page.dart';
+import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
+import 'features/supply_tracker/data/models/supply_item.dart';
+import 'features/supply_tracker/data/repositories/supply_repository.dart';
+import 'shared/services/local_notification_service.dart';
+import 'shared/shared.dart';
+import 'splash/logo_splash_screen.dart';
 
-void main() {
+late SupplyRepository _supplyRepository;
+late ContactRepository _contactRepository;
+late LocalNotificationService _localNotificationService;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+
+  // Register Hive adapters
+  Hive.registerAdapter(SupplyItemAdapter());
+  Hive.registerAdapter(ContactAdapter());
+
+  // Initialize SupplyRepository
+  _supplyRepository = SupplyRepository();
+  await _supplyRepository.initBox();
+
+  // Initialize ContactRepository
+  _contactRepository = ContactRepository();
+  await _contactRepository.initBox();
+  await _contactRepository.seedIfNeeded();
+
+  // Initialize local notification service
+  _localNotificationService = LocalNotificationService.instance;
+  await _localNotificationService.initialize();
+
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
+  State<MyApp> createState() => _MyAppState();
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.light;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
+  void _onThemeChanged(ThemeMode mode) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _themeMode = mode;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    return ShadApp(
+      debugShowCheckedModeBanner: false,
+      themeMode: _themeMode,
+      theme: BihonTheme.light(),
+      darkTheme: BihonTheme.dark(),
+      home: const LogoSplashScreen(),
+      onGenerateRoute: (settings) {
+        if (settings.name == '/home') {
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return ShadToaster(
+                child: HomePage(
+                  themeMode: _themeMode,
+                  onThemeChanged: _onThemeChanged,
+                ),
+              );
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          );
+        }
+        if (settings.name == '/contacts') {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const ContactsPage(),
+          );
+        }
+        if (settings.name == '/safety-status') {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const SafetyStatusPage(),
+          );
+        }
+        return null;
+      },
     );
   }
 }
+
+class HomePage extends StatelessWidget {
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeChanged;
+
+  const HomePage({
+    super.key,
+    required this.themeMode,
+    required this.onThemeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Crisync'),
+        actions: [
+          IconButton(
+            tooltip: 'Emergency Contacts',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/contacts');
+            },
+            icon: const Icon(Icons.contacts_outlined),
+          ),
+          IconButton(
+            tooltip: 'Safety Status',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/safety-status');
+            },
+            icon: const Icon(Icons.sms_outlined),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Center(
+              child: AppThemeSwitcher(
+                themeMode: themeMode,
+                onChanged: onThemeChanged,
+                showLabel: false,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: const SupplyTrackerPage(),
+    );
+  }
+}
+
+/// Global getter to access the SupplyRepository from anywhere in the app.
+SupplyRepository getSupplyRepository() => _supplyRepository;
+
+/// Global getter to access the ContactRepository from anywhere in the app.
+ContactRepository getContactRepository() => _contactRepository;
+
+/// Global getter to access local notifications from anywhere in the app.
+LocalNotificationService getLocalNotificationService() => _localNotificationService;
