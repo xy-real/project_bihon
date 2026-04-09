@@ -23,7 +23,7 @@ class SupplyItemAdapter extends TypeAdapter<SupplyItem> {
       quantity: fields[3] as int,
       expirationDate: fields[4] as DateTime,
       imageUrl: fields[5] as String?,
-      householdId: fields[6] as String? ?? SupplyItem.defaultHouseholdId,
+      householdId: fields[6] as String,
     );
   }
 
