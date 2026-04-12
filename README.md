@@ -71,8 +71,8 @@ Project Bihon is an Android application designed to help families prepare for an
 	- Alerts list screen and settings/onboarding profile screens
 	- Direct/general alert card variants and classification picker
 
-### Compatibility
-- Breaking changes: none (feature is additive)
+### Known Issues
+- None.
 
 ## PB.010.001 Release Notes
 ### Implemented Features
