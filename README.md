@@ -4,8 +4,34 @@ Project Bihon is an Android application designed to help families prepare for an
 
 | Internal Release Code | Date Released |
 |:-----------------|:--------------|
+| PB.010.002       | 2026-04-13    |
 | PB.010.001       | 2026-04-05    |
 | PB.010.000       | 2026-03-01    |
+
+## PB.010.002 Release Notes
+### Implemented Features
+- Location-Specific Alert Prioritization
+	- Prioritizes warnings based on the household risk profile
+	- Highlights higher-risk alerts clearly for faster decision-making
+- Household Profile Experience
+	- Added onboarding and settings options for updating household risk classification
+- Improved Alerts Display
+	- Added direct-threat and general-advisory card variants
+	- Improved alert ordering so critical items appear first
+	- Added graceful empty-state behavior when no alerts are available
+
+### App Integration
+- Added local profile and cached-alert support in the main app flow
+- Preserved offline-first behavior with no network requirement in alert rendering
+- Kept fallback-safe behavior for missing profile or tag data
+
+### Quality and Stability Updates
+- Added unit, widget, and integration test coverage for prioritization and fallback scenarios
+- Verified stable behavior during profile changes and offline usage
+- No compilation errors reported
+
+### Known Issues
+- None.
 
 ## PB.010.001 Release Notes
 ### Implemented Features
