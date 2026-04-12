@@ -4,8 +4,75 @@ Project Bihon is an Android application designed to help families prepare for an
 
 | Internal Release Code | Date Released |
 |:-----------------|:--------------|
+| PB.010.002       | 2026-04-13    |
 | PB.010.001       | 2026-04-05    |
 | PB.010.000       | 2026-03-01    |
+
+## PB.010.002 Release Notes
+### Implemented Features
+- Location-Specific Alert Prioritization
+	- Tailors warning prioritization based on household location risk profile
+	- Fully implemented through 5 development steps and validated for production
+- Data Models and Normalization
+	- Added household location risk classification support using canonical values:
+		coastal, flood_prone, landslide_prone, unknown
+	- Added cached alert risk-tag mapping for household-targeted classification
+	- Added normalization utilities for risk tags (trim, lowercase, underscore normalization, deduplication)
+- Threat Classification and Sorting
+	- Added ThreatBand classification (direct, general)
+	- Added pure classification and deterministic sorting logic
+	- Ordering now enforces:
+		1. Direct threats first
+		2. Severity priority (high to medium to low)
+		3. Newest published alerts first
+		4. General advisories after direct threats
+- Household Profile Experience
+	- Added local household persistence with validation
+	- Added risk-classification picker with user-friendly labels and feedback
+	- Added guided household onboarding flow with skip option
+	- Added profile settings support for post-onboarding updates
+- Alert Card Variants and Visual Priority
+	- Added dedicated direct-threat alert card with high-contrast warning styling
+	- Added general-advisory alert card for standard notices
+	- Added deterministic alert card factory for consistent rendering
+	- Added adaptive styling support for light and dark mode
+- Alerts Screen Integration
+	- Added local alerts repository for render-path cache reads
+	- Added alerts list page integration for classification and deterministic sorting
+	- Added reactive refresh behavior through Hive listeners
+	- Added empty-state handling with safe fallback behavior
+
+### Key Guarantees
+- Offline resilience
+	- Safe fallback behavior when household profile is null, unknown, or empty
+	- Safe fallback behavior when risk tags are missing or empty
+	- Empty cached alerts render an empty state without errors
+	- Mounted checks prevent setState-after-dispose issues
+- Zero network dependency in alert rendering
+	- Alerts and household reads are local-only in render path
+	- Classification and sorting functions are pure and deterministic
+	- Fully usable in airplane mode
+
+### Testing and Validation
+- Added/verified broad unit and widget coverage, including new integration scenarios
+- Verified dynamic reprioritization when household risk profile changes
+- Verified fallback behavior for empty and unknown data paths
+- Verified stable behavior in offline and cache-only conditions
+- No compilation errors reported
+
+### Architecture Additions
+- Data layer
+	- Household and cached alert model support with Hive adapters
+	- Local repositories for household profile and cached alerts
+- Domain layer
+	- Pure threat-classification logic
+	- Risk-tag normalization utilities
+- Presentation layer
+	- Alerts list screen and settings/onboarding profile screens
+	- Direct/general alert card variants and classification picker
+
+### Compatibility
+- Breaking changes: none (feature is additive)
 
 ## PB.010.001 Release Notes
 ### Implemented Features
