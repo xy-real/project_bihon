@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:project_bihon/features/household/data/repositories/household_repository.dart';
-import 'package:project_bihon/features/household/presentation/widgets/risk_classification_picker.dart';
 import 'package:project_bihon/features/household/presentation/widgets/risk_classification_picker.dart'
     as rcp;
 
@@ -39,10 +38,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     try {
       final household =
           await widget.householdRepository.getOrCreateHousehold();
+      if (!mounted) return;
       setState(() {
         _currentRiskClassification = household.risk_classification;
       });
     } catch (e) {
+      if (!mounted) return;
       // Handle error silently, default to 'unknown'
       setState(() {
         _currentRiskClassification = 'unknown';
@@ -103,12 +104,13 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
               if (_showPicker)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: RiskClassificationPicker(
+                  child: rcp.RiskClassificationPicker(
                     householdRepository: widget.householdRepository,
                     initialValue: _currentRiskClassification,
                     onChanged: () async {
                       // Reload data after change
                       await _loadHouseholdData();
+                      if (!mounted) return;
                       setState(() {
                         _showPicker = false;
                       });
