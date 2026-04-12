@@ -32,7 +32,7 @@ String normalizeRiskTag(String raw) {
 /// 1. Applies [normalizeRiskTag] to each item
 /// 2. Removes duplicate entries
 /// 3. Filters out empty strings
-/// 4. Returns a new List<String>
+/// 4. Returns a new List&lt;String&gt;
 ///
 /// Example:
 /// ```dart

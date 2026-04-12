@@ -132,6 +132,7 @@ class _RiskClassificationPickerState extends State<RiskClassificationPicker> {
                   ),
                   child: Row(
                     children: [
+                      // ignore: deprecated_member_use
                       Radio<String?>(
                         value: canonicalValue,
                         groupValue: _selectedValue,
