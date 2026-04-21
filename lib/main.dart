@@ -4,6 +4,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/alerts/presentation/pages/alerts_list_page.dart';
+import 'features/evacuation/data/models/cached_evac_center.dart';
+import 'features/evacuation/data/repositories/evacuation_center_repository.dart';
 import 'features/emergency_contacts/data/models/contact.dart';
 import 'features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
@@ -23,6 +25,7 @@ late SupplyRepository _supplyRepository;
 late ContactRepository _contactRepository;
 late HouseholdRepository _householdRepository;
 late AlertsRepository _alertsRepository;
+late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
 
 void main() async {
@@ -36,6 +39,7 @@ void main() async {
   Hive.registerAdapter(ContactAdapter());
   Hive.registerAdapter(HouseholdAdapter());
   Hive.registerAdapter(CachedAlertAdapter());
+  Hive.registerAdapter(CachedEvacCenterAdapter());
 
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
@@ -53,6 +57,10 @@ void main() async {
   // Initialize AlertsRepository
   _alertsRepository = AlertsRepository();
   await _alertsRepository.initBox();
+
+  // Initialize EvacuationCenterRepository
+  _evacuationCenterRepository = EvacuationCenterRepository();
+  await _evacuationCenterRepository.initBox();
 
   // Initialize local notification service
   _localNotificationService = LocalNotificationService.instance;

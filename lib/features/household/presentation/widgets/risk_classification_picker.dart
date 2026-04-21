@@ -135,7 +135,9 @@ class _RiskClassificationPickerState extends State<RiskClassificationPicker> {
                       // ignore: deprecated_member_use
                       Radio<String?>(
                         value: canonicalValue,
+                        // ignore: deprecated_member_use
                         groupValue: _selectedValue,
+                        // ignore: deprecated_member_use
                         onChanged: _isSaving
                             ? null
                             : (value) {

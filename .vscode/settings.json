@@ -1,0 +1,23 @@
+{
+  "C_Cpp.errorSquiggles": "disabled",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "Dart-Code.dart-code"
+  },
+  "files.exclude": {
+    "**/.dart_tool": false,
+    "**/.flutter-plugins": false,
+    "**/.flutter-plugins-dependencies": false
+  },
+  "search.exclude": {
+    "**/.dart_tool": true,
+    "**/build": true,
+    "**/ios": true,
+    "**/android": true,
+    "**/windows": true,
+    "**/macos": true,
+    "**/linux": true,
+    "**/web": true
+  }
+}

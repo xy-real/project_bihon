@@ -1,10 +1,10 @@
-/// Utility functions for normalizing risk tags used in the Location-Specific Warning System.
-///
-/// Risk tags must be normalized to a canonical format:
-/// - Lowercase
-/// - Whitespace trimmed
-/// - Spaces and hyphens replaced with underscores
-/// - Deduplicated when processing lists
+// Utility functions for normalizing risk tags used in the Location-Specific Warning System.
+//
+// Risk tags must be normalized to a canonical format:
+// - Lowercase
+// - Whitespace trimmed
+// - Spaces and hyphens replaced with underscores
+// - Deduplicated when processing lists
 
 /// Normalizes a single risk tag string to canonical format.
 ///
