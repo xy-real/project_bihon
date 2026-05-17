@@ -17,6 +17,7 @@ import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
 import 'shared/models/household.dart';
 import 'shared/services/local_notification_service.dart';
+import 'shared/services/supabase_service.dart';
 import 'shared/shared.dart';
 import 'splash/logo_splash_screen.dart';
 
@@ -62,6 +63,12 @@ void main() async {
   // Initialize local notification service
   _localNotificationService = LocalNotificationService.instance;
   await _localNotificationService.initialize();
+
+  // Initialize Supabase
+  await SupabaseService.initialize(
+    url: 'https://jlzxptmwxqfdpmwchnex.supabase.co',       // TODO: replace with actual URL
+    anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7', // TODO: replace with actual anon key
+  );
 
   runApp(const MyApp());
 }
