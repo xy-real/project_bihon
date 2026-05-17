@@ -5,6 +5,7 @@ import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/alerts/presentation/pages/alerts_list_page.dart';
 import 'features/evacuation_centers/data/models/cached_evac_center.dart';
+import 'features/evacuation_centers/data/repositories/evacuation_center_repository.dart';
 import 'features/emergency_contacts/data/models/contact.dart';
 import 'features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
@@ -25,6 +26,7 @@ late SupplyRepository _supplyRepository;
 late ContactRepository _contactRepository;
 late HouseholdRepository _householdRepository;
 late AlertsRepository _alertsRepository;
+late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
 
 void main() async {
@@ -57,8 +59,10 @@ void main() async {
   _alertsRepository = AlertsRepository();
   await _alertsRepository.initBox();
 
-  // Open evacuation centers box
-  await Hive.openBox<CachedEvacCenter>('evac_center_box');
+  // Initialize EvacuationCenterRepository
+  _evacuationCenterRepository = EvacuationCenterRepository();
+  await _evacuationCenterRepository.initBox();
+  await _evacuationCenterRepository.syncFromSupabase();
 
   // Initialize local notification service
   _localNotificationService = LocalNotificationService.instance;
@@ -66,8 +70,8 @@ void main() async {
 
   // Initialize Supabase
   await SupabaseService.initialize(
-    url: 'https://jlzxptmwxqfdpmwchnex.supabase.co',       // TODO: replace with actual URL
-    anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7', // TODO: replace with actual anon key
+    url: 'https://jlzxptmwxqfdpmwchnex.supabase.co', 
+    anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7', 
   );
 
   runApp(const MyApp());
@@ -236,3 +240,6 @@ HouseholdRepository getHouseholdRepository() => _householdRepository;
 
 /// Global getter to access the AlertsRepository from anywhere in the app.
 AlertsRepository getAlertsRepository() => _alertsRepository;
+
+/// Global getter to access the EvacuationCenterRepository from anywhere in the app.
+EvacuationCenterRepository getEvacuationCenterRepository() => _evacuationCenterRepository;
