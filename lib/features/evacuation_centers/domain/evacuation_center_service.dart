@@ -162,8 +162,10 @@ class EvacuationCenterService {
       // Permission granted; get current position
       try {
         final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 10),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 10),
+          ),
         );
         developer.log('Got user position: ${position.latitude}, ${position.longitude}');
         return position;
