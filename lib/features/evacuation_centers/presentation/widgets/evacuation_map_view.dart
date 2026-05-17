@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
+import 'package:latlong2/latlong.dart' as ll;
 import 'package:geolocator/geolocator.dart';
 import 'package:project_bihon/features/evacuation_centers/data/models/cached_evac_center.dart';
 import 'package:project_bihon/shared/widgets/app_badge.dart';
-
-/// Simple coordinate type for map markers (latitude, longitude).
-typedef LatLng = fm.LatLng;
 
 /// Map widget displaying evacuation centers with distance-aware markers.
 ///
@@ -101,8 +99,8 @@ class EvacuationMapView extends StatelessWidget {
   Widget build(BuildContext context) {
     // Determine map center: use user position or default to Baybay City
     final mapCenter = userPosition != null
-        ? LatLng(userPosition!.latitude, userPosition!.longitude)
-        : const LatLng(10.6840, 124.8000); // Baybay City default
+        ? ll.LatLng(userPosition!.latitude, userPosition!.longitude)
+        : const ll.LatLng(10.6840, 124.8000); // Baybay City default
 
     final mapZoom = userPosition != null ? 15.0 : 13.0;
 
@@ -111,7 +109,7 @@ class EvacuationMapView extends StatelessWidget {
       // User position marker (if available)
       if (userPosition != null)
         fm.Marker(
-          point: LatLng(userPosition!.latitude, userPosition!.longitude),
+          point: ll.LatLng(userPosition!.latitude, userPosition!.longitude),
           width: 40,
           height: 40,
           child: Container(
@@ -137,7 +135,7 @@ class EvacuationMapView extends StatelessWidget {
       // Evacuation center markers
       ...centers.map(
         (center) => fm.Marker(
-          point: LatLng(center.latitude, center.longitude),
+          point: ll.LatLng(center.latitude, center.longitude),
           width: 40,
           height: 40,
           child: GestureDetector(
