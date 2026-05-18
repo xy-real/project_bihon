@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/alerts/data/models/cached_alert.dart';
@@ -74,6 +75,16 @@ void main() async {
     url: 'https://jlzxptmwxqfdpmwchnex.supabase.co', 
     anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7', 
   );
+
+  // Initialize FMTC ObjectBox backend for offline map tile caching.
+  // Must be called before any FMTCStore or download operations.
+  // Wrapped in try/catch to prevent a caching failure from crashing the app.
+  try {
+    await FMTCObjectBoxBackend().initialise();
+  } catch (e) {
+    // Log but do not rethrow — map caching is non-critical.
+    debugPrint('[FMTC] Backend initialization failed: $e');
+  }
 
   runApp(const MyApp());
 }
