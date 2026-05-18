@@ -6,6 +6,7 @@ import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/alerts/presentation/pages/alerts_list_page.dart';
 import 'features/evacuation_centers/data/models/cached_evac_center.dart';
 import 'features/evacuation_centers/data/repositories/evacuation_center_repository.dart';
+import 'features/evacuation_centers/presentation/pages/evacuation_center_page.dart';
 import 'features/emergency_contacts/data/models/contact.dart';
 import 'features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
@@ -157,6 +158,12 @@ class _MyAppState extends State<MyApp> {
           return MaterialPageRoute<void>(
             settings: settings,
             builder: (context) => const AlertsListPage(),
+          );
+        }
+        if (settings.name == '/evacuation-centers') {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const EvacuationCenterPage(),
           );
         }
         return null;
