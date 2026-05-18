@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_bihon/features/evacuation_centers/presentation/widgets/download_map_button.dart';
 import 'package:project_bihon/features/household/data/repositories/household_repository.dart';
 import 'package:project_bihon/features/household/presentation/widgets/risk_classification_picker.dart'
     as rcp;
@@ -119,6 +120,35 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                 ),
 
               const Divider(),
+
+              // Offline Maps section header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Offline Maps',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+
+              // Download offline map button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const DownloadOfflineMapButton(),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Download the Baybay City map for offline use during emergencies.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           );
         },
