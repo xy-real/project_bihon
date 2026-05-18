@@ -3,8 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  app_links
   file_selector_windows
   flutter_timezone
+  geolocator_windows
+  objectbox_flutter_libs
+  permission_handler_windows
   url_launcher_windows
 )
 

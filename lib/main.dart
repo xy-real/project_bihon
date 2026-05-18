@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/alerts/presentation/pages/alerts_list_page.dart';
+import 'features/evacuation_centers/data/models/cached_evac_center.dart';
+import 'features/evacuation_centers/data/repositories/evacuation_center_repository.dart';
+import 'features/evacuation_centers/presentation/pages/evacuation_center_page.dart';
 import 'features/emergency_contacts/data/models/contact.dart';
 import 'features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
@@ -16,6 +20,7 @@ import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
 import 'shared/models/household.dart';
 import 'shared/services/local_notification_service.dart';
+import 'shared/services/supabase_service.dart';
 import 'shared/shared.dart';
 import 'splash/logo_splash_screen.dart';
 
@@ -23,6 +28,7 @@ late SupplyRepository _supplyRepository;
 late ContactRepository _contactRepository;
 late HouseholdRepository _householdRepository;
 late AlertsRepository _alertsRepository;
+late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
 
 void main() async {
@@ -36,6 +42,7 @@ void main() async {
   Hive.registerAdapter(ContactAdapter());
   Hive.registerAdapter(HouseholdAdapter());
   Hive.registerAdapter(CachedAlertAdapter());
+  Hive.registerAdapter(CachedEvacCenterAdapter());
 
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
@@ -54,9 +61,30 @@ void main() async {
   _alertsRepository = AlertsRepository();
   await _alertsRepository.initBox();
 
+  // Initialize EvacuationCenterRepository
+  _evacuationCenterRepository = EvacuationCenterRepository();
+  await _evacuationCenterRepository.initBox();
+  await _evacuationCenterRepository.syncFromSupabase();
+
   // Initialize local notification service
   _localNotificationService = LocalNotificationService.instance;
   await _localNotificationService.initialize();
+
+  // Initialize Supabase
+  await SupabaseService.initialize(
+    url: 'https://jlzxptmwxqfdpmwchnex.supabase.co', 
+    anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7', 
+  );
+
+  // Initialize FMTC ObjectBox backend for offline map tile caching.
+  // Must be called before any FMTCStore or download operations.
+  // Wrapped in try/catch to prevent a caching failure from crashing the app.
+  try {
+    await FMTCObjectBoxBackend().initialise();
+  } catch (e) {
+    // Log but do not rethrow — map caching is non-critical.
+    debugPrint('[FMTC] Backend initialization failed: $e');
+  }
 
   runApp(const MyApp());
 }
@@ -143,6 +171,12 @@ class _MyAppState extends State<MyApp> {
             builder: (context) => const AlertsListPage(),
           );
         }
+        if (settings.name == '/evacuation-centers') {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => const EvacuationCenterPage(),
+          );
+        }
         return null;
       },
     );
@@ -187,6 +221,13 @@ class HomePage extends StatelessWidget {
             icon: const Icon(Icons.settings_outlined),
           ),
           IconButton(
+            tooltip: 'Evacuation Centers',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/evacuation-centers');
+            },
+            icon: const Icon(Icons.location_on_outlined),
+          ),
+          IconButton(
             tooltip: 'Alerts',
             onPressed: () {
               Navigator.of(context).pushNamed('/alerts');
@@ -224,3 +265,6 @@ HouseholdRepository getHouseholdRepository() => _householdRepository;
 
 /// Global getter to access the AlertsRepository from anywhere in the app.
 AlertsRepository getAlertsRepository() => _alertsRepository;
+
+/// Global getter to access the EvacuationCenterRepository from anywhere in the app.
+EvacuationCenterRepository getEvacuationCenterRepository() => _evacuationCenterRepository;
