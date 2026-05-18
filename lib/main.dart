@@ -221,6 +221,13 @@ class HomePage extends StatelessWidget {
             icon: const Icon(Icons.settings_outlined),
           ),
           IconButton(
+            tooltip: 'Evacuation Centers',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/evacuation-centers');
+            },
+            icon: const Icon(Icons.location_on_outlined),
+          ),
+          IconButton(
             tooltip: 'Alerts',
             onPressed: () {
               Navigator.of(context).pushNamed('/alerts');
