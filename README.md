@@ -4,9 +4,40 @@ Project Bihon is an Android application designed to help families prepare for an
 
 | Internal Release Code | Date Released |
 |:-----------------|:--------------|
+| PB.010.003       | 2026-05-23    |
 | PB.010.002       | 2026-04-13    |
 | PB.010.001       | 2026-04-05    |
 | PB.010.000       | 2026-03-01    |
+
+## PB.010.003 Release Notes
+### Implemented Features
+- Evacuation Center Locator
+	- Added a new evacuation center locator with List View and Map View
+	- Shows nearest centers using GPS-based distance sorting
+	- Displays center name, distance, capacity, and status in color-coded cards
+- Offline-Capable Map Experience
+	- Added offline-capable map rendering with pre-cached Baybay City tiles
+	- Added marker colors by center status (Open, Near Capacity, Full/Closed)
+	- Added center detail bottom sheet when markers are tapped
+- Data Sync and Local Cache
+	- Added evacuation center local caching using Hive
+	- Added Supabase-to-Hive sync flow for evacuation centers
+	- Kept UI reads local-only from cache for offline reliability
+
+### App Integration
+- Added a centralized Supabase service initialized at app startup
+- Added evacuation center access from Home page AppBar
+- Added Offline Maps download action in Profile Settings
+- Added offline connectivity banner for map/list awareness
+- Added Android location and internet permissions for locator and map features
+
+### Quality and Stability Updates
+- Added graceful fallback to alphabetical sorting when location permission is denied or GPS is unavailable
+- Preserved crash-safe behavior for offline mode and missing location access
+- Verified manual scenarios for status variants and nearest-center behavior
+
+### Known Issues
+- None.
 
 ## PB.010.002 Release Notes
 ### Implemented Features
