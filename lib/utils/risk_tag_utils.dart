@@ -5,6 +5,7 @@
 /// - Whitespace trimmed
 /// - Spaces and hyphens replaced with underscores
 /// - Deduplicated when processing lists
+library;
 
 /// Normalizes a single risk tag string to canonical format.
 ///
