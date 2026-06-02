@@ -19,8 +19,22 @@ class EvacuationCenterRepository {
   /// Initialize the evacuation centers Hive box.
   ///
   /// Must be called once during app startup after Hive.initFlutter().
+  /// If the box contains corrupt or incompatible data, it will be cleared.
   Future<void> initBox() async {
-    _box = await Hive.openBox<CachedEvacCenter>(boxName);
+    try {
+      _box = await Hive.openBox<CachedEvacCenter>(boxName);
+    } catch (e) {
+      developer.log('Error opening evac_center_box: $e');
+      developer.log('Clearing corrupted Hive box and retrying');
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+        _box = await Hive.openBox<CachedEvacCenter>(boxName);
+        developer.log('Evacuation center box successfully recovered');
+      } catch (e2) {
+        developer.log('Fatal error recovering evac_center_box: $e2');
+        rethrow;
+      }
+    }
   }
 
   /// Sync evacuation centers from Supabase and cache locally.

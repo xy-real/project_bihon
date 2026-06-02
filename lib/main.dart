@@ -61,6 +61,12 @@ void main() async {
   _alertsRepository = AlertsRepository();
   await _alertsRepository.initBox();
 
+  // Initialize Supabase before any repository sync uses the global client.
+  await SupabaseService.initialize(
+    url: 'https://jlzxptmwxqfdpmwchnex.supabase.co',
+    anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7',
+  );
+
   // Initialize EvacuationCenterRepository
   _evacuationCenterRepository = EvacuationCenterRepository();
   await _evacuationCenterRepository.initBox();
@@ -69,12 +75,6 @@ void main() async {
   // Initialize local notification service
   _localNotificationService = LocalNotificationService.instance;
   await _localNotificationService.initialize();
-
-  // Initialize Supabase
-  await SupabaseService.initialize(
-    url: 'https://jlzxptmwxqfdpmwchnex.supabase.co', 
-    anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7', 
-  );
 
   // Initialize FMTC ObjectBox backend for offline map tile caching.
   // Must be called before any FMTCStore or download operations.
