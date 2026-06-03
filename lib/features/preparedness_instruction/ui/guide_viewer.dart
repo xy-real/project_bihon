@@ -56,7 +56,10 @@ class _PreparednessGuideViewerPageState
     if (guide.imageAssetPaths.isEmpty) {
       return null;
     }
-    return guide.imageAssetPaths[index.clamp(0, guide.imageAssetPaths.length - 1)];
+    return guide.imageAssetPaths[index.clamp(
+      0,
+      guide.imageAssetPaths.length - 1,
+    )];
   }
 
   void _precacheGuideImages(InstructionGuide guide) {
@@ -66,8 +69,64 @@ class _PreparednessGuideViewerPageState
 
     _precachedGuideIds.add(guide.id);
     for (final path in guide.imageAssetPaths) {
-      precacheImage(AssetImage(path), context);
+      precacheImage(
+        AssetImage(path),
+        context,
+        onError: (error, stackTrace) {
+          debugPrint(
+            '[GuideViewer] Unable to precache image asset "$path": $error',
+          );
+        },
+      );
     }
+  }
+
+  Widget _buildImagePlaceholder(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ColoredBox(
+      color: colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.image_not_supported_outlined,
+                size: 48,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Instruction image unavailable',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuideImage(BuildContext context, String? imagePath) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: imagePath == null
+          ? _buildImagePlaceholder(context)
+          : Image.asset(
+              imagePath,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildImagePlaceholder(context);
+              },
+            ),
+    );
   }
 
   Future<void> _markReadIfFinalPage(
@@ -101,46 +160,42 @@ class _PreparednessGuideViewerPageState
 
     return SafeArea(
       top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: imagePath == null
-                    ? ColoredBox(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        child: const Icon(Icons.image_not_supported_outlined),
-                      )
-                    : Image.asset(
-                        imagePath,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return ColoredBox(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                            child: const Icon(Icons.broken_image_outlined),
-                          );
-                        },
-                      ),
-              ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight;
+          final maxImageHeight = (availableHeight * 0.58).clamp(220.0, 420.0);
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Flexible(
+                  flex: 3,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxImageHeight),
+                    child: _buildGuideImage(context, imagePath),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Step ${index + 1} of ${_pageCountFor(guide)}',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                Flexible(
+                  flex: 2,
+                  child: SingleChildScrollView(
+                    child: Text(
+                      _stepText(guide, index),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Step ${index + 1} of ${_pageCountFor(guide)}',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _stepText(guide, index),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -222,9 +277,7 @@ class _PreparednessGuideViewerPageState
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(guide.title),
-      ),
+      appBar: AppBar(title: Text(guide.title)),
       body: Column(
         children: [
           Expanded(

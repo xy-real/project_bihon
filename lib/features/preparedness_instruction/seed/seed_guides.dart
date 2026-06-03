@@ -42,9 +42,9 @@ List<InstructionGuide> getSeedGuides() {
         'After shaking stops, check for injuries and move calmly to an open safe area.',
       ],
       imageAssetPaths: const [
-        'assets/images/guides/earthquake_01_01.png',
-        'assets/images/guides/earthquake_01_02.png',
-        'assets/images/guides/earthquake_01_03.png',
+        'assets/images/guides/drop-cover-hold.png',
+        'assets/images/guides/windows.png',
+        'assets/images/guides/buildings.png',
       ],
     ),
     InstructionGuide(
