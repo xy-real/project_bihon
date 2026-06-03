@@ -15,6 +15,10 @@ import 'features/emergency_contacts/presentation/pages/safety_status_page.dart';
 import 'features/household/data/repositories/household_repository.dart';
 import 'features/household/presentation/pages/onboarding_page.dart';
 import 'features/household/presentation/pages/profile_settings_page.dart';
+import 'features/preparedness_instruction/models/instruction_guide.dart';
+import 'features/preparedness_instruction/repositories/instruction_guide_repository.dart';
+import 'features/preparedness_instruction/ui/category_grid.dart';
+import 'features/preparedness_instruction/ui/guide_viewer.dart';
 import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
 import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
@@ -30,6 +34,7 @@ late HouseholdRepository _householdRepository;
 late AlertsRepository _alertsRepository;
 late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
+late InstructionGuideRepository _instructionGuideRepository;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +48,7 @@ void main() async {
   Hive.registerAdapter(HouseholdAdapter());
   Hive.registerAdapter(CachedAlertAdapter());
   Hive.registerAdapter(CachedEvacCenterAdapter());
+  Hive.registerAdapter(InstructionGuideAdapter());
 
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
@@ -60,6 +66,11 @@ void main() async {
   // Initialize AlertsRepository
   _alertsRepository = AlertsRepository();
   await _alertsRepository.initBox();
+
+  // Initialize preparedness instruction guides
+  _instructionGuideRepository = InstructionGuideRepository();
+  await _instructionGuideRepository.initBox();
+  await _instructionGuideRepository.seedIfNeeded();
 
   // Initialize Supabase before any repository sync uses the global client.
   await SupabaseService.initialize(
@@ -171,6 +182,31 @@ class _MyAppState extends State<MyApp> {
             builder: (context) => const AlertsListPage(),
           );
         }
+        if (settings.name == PreparednessCategoryGridPage.routeName) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => PreparednessCategoryGridPage(
+              repository: _instructionGuideRepository,
+            ),
+          );
+        }
+        if (settings.name == PreparednessGuideViewerPage.routeName) {
+          final guideId = settings.arguments as String?;
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) {
+              if (guideId == null || guideId.trim().isEmpty) {
+                return const Scaffold(
+                  body: Center(child: Text('Guide id is missing.')),
+                );
+              }
+              return PreparednessGuideViewerPage(
+                repository: _instructionGuideRepository,
+                guideId: guideId,
+              );
+            },
+          );
+        }
         if (settings.name == '/evacuation-centers') {
           return MaterialPageRoute<void>(
             settings: settings,
@@ -234,6 +270,15 @@ class HomePage extends StatelessWidget {
             },
             icon: const Icon(Icons.notifications_outlined),
           ),
+          IconButton(
+            tooltip: 'Preparedness Guides',
+            onPressed: () {
+              Navigator.of(context).pushNamed(
+                PreparednessCategoryGridPage.routeName,
+              );
+            },
+            icon: const Icon(Icons.menu_book_outlined),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
@@ -268,3 +313,7 @@ AlertsRepository getAlertsRepository() => _alertsRepository;
 
 /// Global getter to access the EvacuationCenterRepository from anywhere in the app.
 EvacuationCenterRepository getEvacuationCenterRepository() => _evacuationCenterRepository;
+
+/// Global getter to access the InstructionGuideRepository from anywhere in the app.
+InstructionGuideRepository getInstructionGuideRepository() =>
+    _instructionGuideRepository;
