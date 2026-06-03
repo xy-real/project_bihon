@@ -12,9 +12,9 @@ List<InstructionGuide> getSeedGuides() {
         'Move important documents, medicines, and emergency supplies into a waterproof container.',
       ],
       imageAssetPaths: const [
-        'assets/images/guides/typhoon_01_01.png',
-        'assets/images/guides/typhoon_01_02.png',
-        'assets/images/guides/typhoon_01_03.png',
+        'assets/images/guides/typhoon_1.png',
+        'assets/images/guides/typhoon_2.png',
+        'assets/images/guides/typhoon_3.png',
       ],
     ),
     InstructionGuide(
@@ -27,9 +27,9 @@ List<InstructionGuide> getSeedGuides() {
         'Move to higher ground early and bring only essential supplies if evacuation becomes necessary.',
       ],
       imageAssetPaths: const [
-        'assets/images/guides/flood_01_01.png',
-        'assets/images/guides/flood_01_02.png',
-        'assets/images/guides/flood_01_03.png',
+        'assets/images/guides/flood_1.png',
+        'assets/images/guides/flood_2.png',
+        'assets/images/guides/flood_1.png',
       ],
     ),
     InstructionGuide(
@@ -57,9 +57,9 @@ List<InstructionGuide> getSeedGuides() {
         'Review the bag every month and replace expired food, water, batteries, and medicines.',
       ],
       imageAssetPaths: const [
-        'assets/images/guides/go_bag_01_01.png',
+        'assets/images/guides/go_bag_1.png',
         'assets/images/guides/go_bag_01_02.png',
-        'assets/images/guides/go_bag_01_03.png',
+        'assets/images/guides/go_bag_1.png',
       ],
     ),
   ];

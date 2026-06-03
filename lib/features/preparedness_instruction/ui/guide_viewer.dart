@@ -163,7 +163,11 @@ class _PreparednessGuideViewerPageState
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
-          final maxImageHeight = (availableHeight * 0.58).clamp(220.0, 420.0);
+          final maxImageHeight = (availableHeight * 0.5).clamp(180.0, 280.0);
+          final maxImageWidth = math.max(
+            0.0,
+            math.min(360.0, constraints.maxWidth - 56),
+          );
 
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -172,9 +176,17 @@ class _PreparednessGuideViewerPageState
               children: [
                 Flexible(
                   flex: 3,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: maxImageHeight),
-                    child: _buildGuideImage(context, imagePath),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: maxImageWidth,
+                          maxHeight: maxImageHeight,
+                        ),
+                        child: _buildGuideImage(context, imagePath),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
