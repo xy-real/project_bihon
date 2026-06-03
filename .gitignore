@@ -46,3 +46,6 @@ app.*.map.json
 
 #documentation
 .docs
+
+# MCP configuration
+mcp.json

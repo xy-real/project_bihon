@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/shared/models/household.dart';
 
@@ -15,8 +16,22 @@ class HouseholdRepository {
   /// Initialize the household Hive box.
   ///
   /// Must be called once during app startup after Hive.initFlutter().
+  /// If the box contains corrupt or incompatible data, it will be cleared.
   Future<void> initBox() async {
-    _box = await Hive.openBox<Household>(boxName);
+    try {
+      _box = await Hive.openBox<Household>(boxName);
+    } catch (e) {
+      debugPrint('[HouseholdRepository] Error opening household_box: $e');
+      debugPrint('[HouseholdRepository] Clearing corrupted Hive box and retrying');
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+        _box = await Hive.openBox<Household>(boxName);
+        debugPrint('[HouseholdRepository] Household box successfully recovered');
+      } catch (e2) {
+        debugPrint('[HouseholdRepository] Fatal error recovering household_box: $e2');
+        rethrow;
+      }
+    }
   }
 
   /// Get the default household, creating it if it doesn't exist.

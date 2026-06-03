@@ -10,7 +10,20 @@ class ContactRepository {
   late Box<Contact> _box;
 
   Future<void> initBox() async {
-    _box = await Hive.openBox<Contact>(boxName);
+    try {
+      _box = await Hive.openBox<Contact>(boxName);
+    } catch (e) {
+      debugPrint('[ContactRepository] Error opening contact_box: $e');
+      debugPrint('[ContactRepository] Clearing corrupted Hive box and retrying');
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+        _box = await Hive.openBox<Contact>(boxName);
+        debugPrint('[ContactRepository] Contact box successfully recovered');
+      } catch (e2) {
+        debugPrint('[ContactRepository] Fatal error recovering contact_box: $e2');
+        rethrow;
+      }
+    }
   }
 
   Future<void> seedIfNeeded() async {
