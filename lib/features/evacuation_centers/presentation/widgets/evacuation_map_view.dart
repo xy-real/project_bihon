@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
-import 'package:latlong2/latlong.dart' as ll;
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart' as ll;
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/evacuation_centers/data/models/cached_evac_center.dart';
 import 'package:project_bihon/shared/widgets/app_badge.dart';
 
@@ -9,45 +10,38 @@ import 'package:project_bihon/shared/widgets/app_badge.dart';
 ///
 /// Features:
 /// - Displays evacuation centers as markers on a map
-/// - Marker colors indicate status (green=Open, yellow=Near Capacity, red=Full/Closed)
+/// - Marker colors indicate status
 /// - Shows user location as a distinct orange marker if provided
 /// - Bottom sheet on marker tap with center details
 /// - Defaults to Baybay City view if no user position provided
-/// - Offline-capable via FMTC tile caching
+/// - Uses the existing FlutterMap tile layer
 class EvacuationMapView extends StatelessWidget {
-  /// List of evacuation centers to display as markers.
-  final List<CachedEvacCenter> centers;
-
-  /// Optional user position; if provided, map centers on user and shows user marker.
-  final Position? userPosition;
-
   const EvacuationMapView({
     super.key,
     required this.centers,
     this.userPosition,
   });
 
-  /// Determine marker color based on evacuation center status.
-  ///
-  /// - "Open" → green
-  /// - "Near Capacity" → yellow (#FACC15)
-  /// - "Full" or "Closed" → red
-  /// - default → grey
+  /// List of evacuation centers to display as markers.
+  final List<CachedEvacCenter> centers;
+
+  /// Optional user position; if provided, map centers on user and shows user marker.
+  final Position? userPosition;
+
   Color _getMarkerColor(String status) {
     switch (status.toLowerCase()) {
       case 'open':
-        return Colors.green;
+        return DashboardDesign.success;
       case 'near capacity':
-        return const Color(0xFFFACC15);
+        return DashboardDesign.warning;
       case 'full':
       case 'closed':
-        return Colors.red;
+        return DashboardDesign.danger;
       default:
         return Colors.grey;
     }
   }
 
-  /// Show bottom sheet with evacuation center details on marker tap.
   void _showCenterDetails(BuildContext context, CachedEvacCenter center) {
     showModalBottomSheet(
       context: context,
@@ -97,16 +91,13 @@ class EvacuationMapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine map center: use user position or default to Baybay City
     final mapCenter = userPosition != null
         ? ll.LatLng(userPosition!.latitude, userPosition!.longitude)
-        : const ll.LatLng(10.6840, 124.8000); // Baybay City default
+        : const ll.LatLng(10.6840, 124.8000);
 
     final mapZoom = userPosition != null ? 15.0 : 13.0;
 
-    // Build markers for evacuation centers
     final markers = <fm.Marker>[
-      // User position marker (if available)
       if (userPosition != null)
         fm.Marker(
           point: ll.LatLng(userPosition!.latitude, userPosition!.longitude),
@@ -114,7 +105,7 @@ class EvacuationMapView extends StatelessWidget {
           height: 40,
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFFF7A1A), // Bihon orange
+              color: const Color(0xFFFF7A1A),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
@@ -132,7 +123,6 @@ class EvacuationMapView extends StatelessWidget {
             ),
           ),
         ),
-      // Evacuation center markers
       ...centers.map(
         (center) => fm.Marker(
           point: ll.LatLng(center.latitude, center.longitude),
@@ -170,12 +160,10 @@ class EvacuationMapView extends StatelessWidget {
         initialZoom: mapZoom,
       ),
       children: [
-        // Tile layer from FMTC store
         fm.TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.project_bihon',
         ),
-        // Markers layer
         fm.MarkerLayer(markers: markers),
       ],
     );

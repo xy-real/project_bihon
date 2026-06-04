@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/evacuation_centers/data/models/cached_evac_center.dart';
 import 'package:project_bihon/features/evacuation_centers/data/repositories/evacuation_center_repository.dart';
 import 'package:project_bihon/features/evacuation_centers/domain/evacuation_center_service.dart';
-import 'package:project_bihon/features/evacuation_centers/presentation/widgets/evacuation_map_view.dart';
 import 'package:project_bihon/features/evacuation_centers/presentation/widgets/evac_center_card.dart';
+import 'package:project_bihon/features/evacuation_centers/presentation/widgets/evacuation_map_view.dart';
 import 'package:project_bihon/main.dart' show getEvacuationCenterRepository;
-import 'package:project_bihon/shared/widgets/app_alert_banner.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// Enum for evacuation centers page view modes.
 enum _ViewMode { list, map }
 
-/// Evacuation Centers page with list and map view modes.
-///
-/// Features:
-/// - Toggle between list and map views via AppBar icon button
-/// - Displays evacuation centers sorted by distance from user
-/// - Shows offline banner when in offline mode
-/// - Loading indicator while fetching data
-/// - Empty state message when no centers are cached
-/// - Reuses user position for map view (no second GPS request)
 class EvacuationCenterPage extends StatefulWidget {
   const EvacuationCenterPage({super.key});
 
@@ -45,165 +37,417 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
     _loadCenters();
   }
 
-  /// Load evacuation centers and handle offline detection.
-  ///
-  /// Process:
-  /// 1. Fetch all centers from repository (cached data)
-  /// 2. Sort centers by distance using service
-  /// 3. Try to sync fresh data from Supabase
-  /// 4. If sync fails, mark as offline
-  /// 5. Cache user position for map view reuse
   Future<void> _loadCenters() async {
     try {
-      setState(() => _isLoading = true);
+      if (mounted) {
+        setState(() => _isLoading = true);
+      }
 
-      // Step 1: Get all cached centers
       final allCenters = _repository.getAll();
-
-      // Step 2: Get sorted centers and user position
       final sortedCenters =
           await EvacuationCenterService.getSortedCenters(allCenters);
       _userPosition = EvacuationCenterService.lastKnownPosition;
 
-      // Step 3: Try to sync fresh data from Supabase
       try {
         await _repository.syncFromSupabase();
-        // If sync succeeds, re-fetch sorted centers with potentially new data
         final refreshedCenters = _repository.getAll();
         final refreshedSorted =
             await EvacuationCenterService.getSortedCenters(refreshedCenters);
+
+        if (!mounted) {
+          return;
+        }
+
         setState(() {
           _centers = refreshedSorted;
           _isOffline = false;
         });
-      } catch (e) {
-        // Sync failed: mark as offline and use cached sorted centers
+      } catch (_) {
+        if (!mounted) {
+          return;
+        }
+
         setState(() {
           _centers = sortedCenters;
           _isOffline = true;
         });
       }
-    } catch (e) {
-      // Fallback error handling
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _centers = [];
         _isOffline = true;
       });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  /// Build list view of evacuation centers.
-  Widget _buildListView() {
-    if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          color: Theme.of(context).colorScheme.primary,
-        ),
+  void _handleBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+
+    navigator.pushReplacementNamed('/home');
+  }
+
+  void _openTab(int index) {
+    final navigator = Navigator.of(context);
+    final routeName = switch (index) {
+      0 => '/home',
+      1 => '/alerts',
+      2 => null,
+      3 => '/supplies',
+      4 => '/contacts',
+      _ => null,
+    };
+
+    if (routeName == null) {
+      return;
+    }
+
+    if (index == 0) {
+      navigator.pushNamedAndRemoveUntil(routeName, (route) => false);
+    } else {
+      navigator.pushReplacementNamed(routeName);
+    }
+  }
+
+  Future<void> _openDirections(CachedEvacCenter center) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1'
+      '&destination=${center.latitude},${center.longitude}',
+    );
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
       );
+      if (!launched && mounted) {
+        _showSnackBar('Directions are unavailable on this device.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showSnackBar('Failed to open directions.');
+      }
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  double? _distanceTo(CachedEvacCenter center) {
+    final userPosition = _userPosition;
+    if (userPosition == null) {
+      return null;
+    }
+
+    return EvacuationCenterService.distanceTo(center, userPosition);
+  }
+
+  Widget _buildOfflineBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: DashboardDesign.statusBackground(context, DashboardDesign.info),
+        borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+        border: Border.all(
+          color: DashboardDesign.info.withValues(alpha: 0.24),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.wifi_off,
+            size: 18,
+            color: DashboardDesign.info,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Offline Mode - Showing cached data',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: DashboardDesign.info,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    final title = Text(
+      'Evacuation Centers',
+      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.w900,
+          ),
+    );
+    final toggle = SegmentedButton<_ViewMode>(
+      showSelectedIcon: false,
+      style: SegmentedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        selectedBackgroundColor: DashboardDesign.deepNavy,
+        selectedForegroundColor: Colors.white,
+        foregroundColor: DashboardDesign.mutedText(context),
+        side: BorderSide(color: DashboardDesign.outline(context)),
+      ),
+      segments: const [
+        ButtonSegment<_ViewMode>(
+          value: _ViewMode.list,
+          label: Text('List'),
+        ),
+        ButtonSegment<_ViewMode>(
+          value: _ViewMode.map,
+          label: Text('Map'),
+        ),
+      ],
+      selected: <_ViewMode>{_viewMode},
+      onSelectionChanged: (selection) {
+        setState(() {
+          _viewMode = selection.first;
+        });
+      },
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 360) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              title,
+              const SizedBox(height: 12),
+              Align(alignment: Alignment.centerLeft, child: toggle),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: 12),
+            toggle,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildListContent() {
+    if (_isLoading) {
+      return const _LoadingCard();
     }
 
     if (_centers.isEmpty) {
-      return Center(
-        child: AppAlertBanner(
-          variant: AppAlertBannerVariant.primary,
-          title: 'No evacuation centers found. Connect to the internet to sync data.',
-        ),
-      );
+      return const _EmptyCentersCard();
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _centers.length,
-      itemBuilder: (context, index) {
-        final center = _centers[index];
-        // Calculate distance if user position is available
-        final distance = _userPosition != null
-            ? Geolocator.distanceBetween(
-                _userPosition!.latitude,
-                _userPosition!.longitude,
-                center.latitude,
-                center.longitude,
-              )
-            : null;
+    return Column(
+      children: [
+        for (var index = 0; index < _centers.length; index++) ...[
+          EvacCenterCard(
+            center: _centers[index],
+            distanceMeters: _distanceTo(_centers[index]),
+            onViewDirections: () => _openDirections(_centers[index]),
+          ),
+          if (index != _centers.length - 1)
+            const SizedBox(height: DashboardDesign.gap),
+        ],
+      ],
+    );
+  }
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: EvacCenterCard(
-            center: center,
-            distanceMeters: distance,
+  Widget _buildMapContent() {
+    if (_isLoading) {
+      return const _LoadingCard();
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mapHeight = constraints.maxWidth >= 700 ? 560.0 : 430.0;
+
+        return Container(
+          height: mapHeight,
+          decoration: BoxDecoration(
+            color: DashboardDesign.surface(context),
+            borderRadius: BorderRadius.circular(DashboardDesign.radius),
+            border: Border.all(color: DashboardDesign.outline(context)),
+            boxShadow: DashboardDesign.cardShadow(context),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: EvacuationMapView(
+            centers: _centers,
+            userPosition: _userPosition,
           ),
         );
       },
     );
   }
 
-  /// Build map view of evacuation centers.
-  Widget _buildMapView() {
-    return EvacuationMapView(
-      centers: _centers,
-      userPosition: _userPosition,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
+        ? DashboardDesign.marginTablet
+        : DashboardDesign.marginMobile;
+
     return Scaffold(
+      backgroundColor: DashboardDesign.background(context),
       appBar: AppBar(
-        title: const Text('Evacuation Centers'),
+        toolbarHeight: 56,
+        backgroundColor: DashboardDesign.surface(context),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 0,
         leading: IconButton(
           tooltip: 'Back',
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _handleBack,
+        ),
+        title: const Text(
+          'Evacuation Centers',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
-          // Toggle list/map view button
           IconButton(
-            tooltip: _viewMode == _ViewMode.list ? 'Show Map' : 'Show List',
-            icon: Icon(
-              _viewMode == _ViewMode.list
-                  ? LucideIcons.mapPin
-                  : LucideIcons.list,
-            ),
+            tooltip: 'Profile Settings',
+            icon: const Icon(Icons.settings_outlined),
             onPressed: () {
-              setState(() {
-                _viewMode = _viewMode == _ViewMode.list
-                    ? _ViewMode.map
-                    : _ViewMode.list;
-              });
+              Navigator.of(context).pushNamed('/profile-settings');
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          // Offline banner (if offline)
-          if (_isOffline)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: AppAlertBanner(
-                variant: AppAlertBannerVariant.primary,
-                title: 'Offline Mode: Showing pre-cached map and centers.',
+      bottomNavigationBar: CrisyncBottomNavigation(
+        selectedIndex: 2,
+        onDestinationSelected: _openTab,
+      ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'evacuation-centers-refresh',
+        onPressed: _loadCenters,
+        backgroundColor: DashboardDesign.deepNavy,
+        foregroundColor: Colors.white,
+        tooltip: 'Refresh evacuation centers',
+        child: const Icon(Icons.refresh),
+      ),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            DashboardDesign.gap,
+            horizontalPadding,
+            96,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_isOffline) ...[
+                    _buildOfflineBanner(),
+                    const SizedBox(height: DashboardDesign.gap),
+                  ],
+                  _buildHeader(),
+                  const SizedBox(height: DashboardDesign.gap),
+                  _viewMode == _ViewMode.list
+                      ? _buildListContent()
+                      : _buildMapContent(),
+                ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-          // Content (list or map)
-          Expanded(
-            child: _viewMode == _ViewMode.list
-                ? _buildListView()
-                : _buildMapView(),
+class _LoadingCard extends StatelessWidget {
+  const _LoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 180),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: DashboardDesign.deepNavy,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyCentersCard extends StatelessWidget {
+  const _EmptyCentersCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: DashboardDesign.statusBackground(
+                context,
+                DashboardDesign.info,
+              ),
+            ),
+            child: const Icon(
+              LucideIcons.mapPin,
+              color: DashboardDesign.info,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No evacuation centers found',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Connect to the internet to sync center data, or try refreshing cached records.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                ),
           ),
         ],
       ),
-      floatingActionButton: _viewMode == _ViewMode.list
-          ? FloatingActionButton.extended(
-              onPressed: _loadCenters,
-              label: const Text('Refresh'),
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh evacuation centers',
-            )
-          : null,
     );
   }
 }
