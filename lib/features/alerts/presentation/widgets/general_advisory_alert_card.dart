@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 
 /// Alert card for general advisories to the household.
 ///
@@ -31,97 +32,171 @@ class GeneralAdvisoryAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final mutedColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    const accentColor = DashboardDesign.info;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Muted label
-                Text(
-                  'General Baybay City Advisory',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: mutedColor,
-                        letterSpacing: 0.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 12),
-
-                // Alert title
-                Text(
-                  alert.title.isNotEmpty ? alert.title : 'Alert',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-
-                // Alert content
-                Text(
-                  alert.content.isNotEmpty
-                      ? alert.content
-                      : 'No additional details available',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: textColor,
-                        height: 1.5,
-                      ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-
-                // Footer: advisory type and published date
-                Row(
-                  children: [
-                    Text(
-                      alert.advisoryType.isNotEmpty
-                          ? alert.advisoryType
-                          : 'Advisory',
-                      style:
-                          Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: mutedColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _formatDate(alert.publishedAt),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[500],
-                          ),
-                    ),
-                  ],
-                ),
-
-                // More details button
-                if (onMoreDetails != null) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: onMoreDetails,
-                      icon: const Icon(Icons.info_outline, size: 18),
-                      label: const Text('More Details'),
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.transparent,
+      shadowColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: DashboardDesign.surface(context),
+          borderRadius: BorderRadius.circular(DashboardDesign.radius),
+          border: Border.all(color: DashboardDesign.outline(context)),
+          boxShadow: DashboardDesign.cardShadow(context),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(DashboardDesign.radius),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                Container(
+                  width: 5,
+                  decoration: const BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(DashboardDesign.radius),
                     ),
                   ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: DashboardDesign.statusBackground(
+                                  context,
+                                  accentColor,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  DashboardDesign.compactRadius,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.info_outline_rounded,
+                                color: accentColor,
+                                size: 25,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                alert.title.isNotEmpty ? alert.title : 'Alert',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      color: textColor,
+                                    ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            _StatusBadge(
+                              label: 'ADVISORY',
+                              color: accentColor,
+                              backgroundColor: const Color(0xFFCFE6F2),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          alert.content.isNotEmpty
+                              ? alert.content
+                              : 'No additional details available',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: DashboardDesign.mutedText(context),
+                                    height: 1.45,
+                                  ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                alert.advisoryType.isNotEmpty
+                                    ? alert.advisoryType
+                                    : 'Advisory',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: DashboardDesign.mutedText(context),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _formatDate(alert.publishedAt),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: DashboardDesign.mutedText(context),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        if (onMoreDetails != null) ...[
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: onMoreDetails,
+                              style: TextButton.styleFrom(
+                                foregroundColor: accentColor,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
+                                minimumSize: const Size(48, 40),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('More Details'),
+                                  SizedBox(width: 2),
+                                  Icon(Icons.chevron_right, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -143,5 +218,41 @@ class GeneralAdvisoryAlertCard extends StatelessWidget {
     } else {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
     }
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({
+    required this.label,
+    required this.color,
+    required this.backgroundColor,
+  });
+
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          backgroundColor.withValues(
+            alpha: Theme.of(context).brightness == Brightness.dark ? 0.28 : 1,
+          ),
+          DashboardDesign.surface(context),
+        ),
+        borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+      ),
+    );
   }
 }
