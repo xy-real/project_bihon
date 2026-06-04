@@ -49,3 +49,6 @@ app.*.map.json
 
 # MCP configuration
 mcp.json
+
+#design
+DESIGN.md
