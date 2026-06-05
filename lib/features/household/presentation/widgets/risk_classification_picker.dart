@@ -108,74 +108,73 @@ class _RiskClassificationPickerState extends State<RiskClassificationPicker> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ...riskClassificationOptions.entries.map((entry) {
-          final canonicalValue = entry.key;
-          final label = entry.value['label']!;
-          final description = entry.value['description']!;
+    return RadioGroup<String>(
+      groupValue: _selectedValue,
+      onChanged: (value) {
+        if (_isSaving || value == null) {
+          return;
+        }
+        _handleSelection(value);
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...riskClassificationOptions.entries.map((entry) {
+            final canonicalValue = entry.key;
+            final label = entry.value['label']!;
+            final description = entry.value['description']!;
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _isSaving
-                    ? null
-                    : () => _handleSelection(canonicalValue),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      // ignore: deprecated_member_use
-                      Radio<String?>(
-                        value: canonicalValue,
-                        groupValue: _selectedValue,
-                        onChanged: _isSaving
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  _handleSelection(value);
-                                }
-                              },
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              label,
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            if (widget.showDescriptions)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  description,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                ),
-                              ),
-                          ],
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap:
+                      _isSaving ? null : () => _handleSelection(canonicalValue),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Radio<String>(
+                          value: canonicalValue,
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                label,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              if (widget.showDescriptions)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    description,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Colors.grey[600],
+                                        ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }),
-      ],
+            );
+          }),
+        ],
+      ),
     );
   }
 }
