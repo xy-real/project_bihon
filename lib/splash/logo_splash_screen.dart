@@ -3,7 +3,12 @@ import 'package:video_player/video_player.dart';
 import 'dart:async';
 
 class LogoSplashScreen extends StatefulWidget {
-  const LogoSplashScreen({super.key});
+  const LogoSplashScreen({
+    super.key,
+    this.resolveNextRoute,
+  });
+
+  final Future<String> Function()? resolveNextRoute;
 
   @override
   State<LogoSplashScreen> createState() => _LogoSplashScreenState();
@@ -32,15 +37,37 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
     _fallbackTimer = Timer(const Duration(seconds: 3), () {
       debugPrint('[SPLASH] Fallback timer fired, mounted=$mounted, triggered=$_navigationTriggered');
       if (mounted && !_navigationTriggered) {
-        debugPrint('[SPLASH] Fallback: navigating to home');
-        _navigationTriggered = true;
-        try {
-          Navigator.of(context).pushReplacementNamed('/home');
-        } catch (e) {
-          debugPrint('[SPLASH] Navigation error: $e');
-        }
+        _navigateNext('[SPLASH] Fallback');
       }
     });
+  }
+
+  Future<void> _navigateNext(String reason) async {
+    if (_navigationTriggered) {
+      return;
+    }
+    _navigationTriggered = true;
+
+    var routeName = '/home';
+    try {
+      final resolver = widget.resolveNextRoute;
+      if (resolver != null) {
+        routeName = await resolver();
+      }
+    } catch (e) {
+      debugPrint('$reason route resolution error: $e');
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    try {
+      debugPrint('$reason: navigating to $routeName');
+      Navigator.of(context).pushReplacementNamed(routeName);
+    } catch (e) {
+      debugPrint('$reason navigation error: $e');
+    }
   }
 
   Future<void> _initializeVideo() async {
@@ -68,13 +95,7 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
         debugPrint('[SPLASH] Scheduling 1.5s delayed navigation after video error');
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (mounted && !_navigationTriggered) {
-            debugPrint('[SPLASH] Delayed nav: navigating to home after video error');
-            _navigationTriggered = true;
-            try {
-              Navigator.of(context).pushReplacementNamed('/home');
-            } catch (e2) {
-              debugPrint('[SPLASH] Delayed nav error: $e2');
-            }
+            _navigateNext('[SPLASH] Delayed nav after video error');
           }
         });
       }
@@ -95,13 +116,11 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
         controller.value.position >= controller.value.duration - const Duration(milliseconds: 100);
 
     if (isVideoEnded && !_navigationTriggered) {
-      debugPrint('[SPLASH] Video completed, navigating to home');
-      _navigationTriggered = true;
+      debugPrint('[SPLASH] Video completed, navigating to next route');
       _fallbackTimer?.cancel();
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
-          debugPrint('[SPLASH] Navigating to HomePage now');
-          Navigator.of(context).pushReplacementNamed('/home');
+          _navigateNext('[SPLASH] Video complete');
         }
       });
     }

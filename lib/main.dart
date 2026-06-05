@@ -126,7 +126,12 @@ class _MyAppState extends State<MyApp> {
       themeMode: _themeMode,
       theme: BihonTheme.light(),
       darkTheme: BihonTheme.dark(),
-      home: const LogoSplashScreen(),
+      home: LogoSplashScreen(
+        resolveNextRoute: () async {
+          final completed = _householdRepository.hasCompletedOnboarding();
+          return completed ? '/home' : '/household-onboarding';
+        },
+      ),
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
           return PageRouteBuilder(
@@ -172,7 +177,7 @@ class _MyAppState extends State<MyApp> {
             builder: (context) => HouseholdOnboardingPage(
               householdRepository: _householdRepository,
               onComplete: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pushReplacementNamed('/home');
               },
             ),
           );
