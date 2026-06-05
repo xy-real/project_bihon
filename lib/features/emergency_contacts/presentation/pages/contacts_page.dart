@@ -560,6 +560,7 @@ class _ContactsPageState extends State<ContactsPage> {
       isScrollControlled: true,
       isDismissible: true,
       enableDrag: true,
+      backgroundColor: DashboardDesign.surface(context),
       builder: (sheetContext) {
         return _AddContactSheet(
           repository: _repository,
@@ -1208,6 +1209,25 @@ class _AddContactSheetState extends State<_AddContactSheet> {
   @override
   Widget build(BuildContext context) {
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    const primaryColor = DashboardDesign.deepNavy;
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+      borderSide: BorderSide(
+        color: primaryColor.withValues(alpha: 0.28),
+      ),
+    );
+    final fieldDecorationTheme = Theme.of(context).inputDecorationTheme.copyWith(
+          floatingLabelStyle: const TextStyle(
+            color: primaryColor,
+            fontWeight: FontWeight.w700,
+          ),
+          focusedBorder: fieldBorder.copyWith(
+            borderSide: const BorderSide(
+              color: primaryColor,
+              width: 1.6,
+            ),
+          ),
+        );
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 150),
@@ -1216,94 +1236,183 @@ class _AddContactSheetState extends State<_AddContactSheet> {
       child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Add Contact',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nameController,
-                  enabled: !_isSubmitting,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (value) {
-                    final raw = value ?? '';
-                    if (!ContactValidation.isValidName(raw)) {
-                      return 'Enter at least 2 visible characters.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _phoneController,
-                  enabled: !_isSubmitting,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(
+                    primary: primaryColor,
                   ),
-                  validator: (value) {
-                    final raw = value ?? '';
-                    if (!ContactValidation.isValidPhone(raw)) {
-                      return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedType,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: ContactValidation.allowedTypes
-                      .map(
-                        (type) => DropdownMenuItem<String>(
-                          value: type,
-                          child: Text(type),
+              inputDecorationTheme: fieldDecorationTheme,
+              textSelectionTheme: const TextSelectionThemeData(
+                cursorColor: primaryColor,
+                selectionHandleColor: primaryColor,
+              ),
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: const BoxDecoration(
+                      color: DashboardDesign.deepNavy,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(DashboardDesign.radius),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.person_add_alt_1,
+                            color: Colors.white,
+                          ),
                         ),
-                      )
-                      .toList(),
-                  onChanged: _isSubmitting
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _selectedType = value;
-                          });
-                        },
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Select a contact type.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed:
-                            _isSubmitting ? null : () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                      ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Add Contact',
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _isSubmitting ? null : _submit,
-                        child: Text(_isSubmitting ? 'Saving...' : 'Add Contact'),
-                      ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextFormField(
+                          controller: _nameController,
+                          enabled: !_isSubmitting,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Name',
+                            focusedBorder: fieldBorder.copyWith(
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 1.6,
+                              ),
+                            ),
+                            enabledBorder: fieldBorder,
+                          ),
+                          validator: (value) {
+                            final raw = value ?? '';
+                            if (!ContactValidation.isValidName(raw)) {
+                              return 'Enter at least 2 visible characters.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _phoneController,
+                          enabled: !_isSubmitting,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Phone Number',
+                            hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
+                            focusedBorder: fieldBorder.copyWith(
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 1.6,
+                              ),
+                            ),
+                            enabledBorder: fieldBorder,
+                          ),
+                          validator: (value) {
+                            final raw = value ?? '';
+                            if (!ContactValidation.isValidPhone(raw)) {
+                              return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedType,
+                          decoration: InputDecoration(
+                            labelText: 'Type',
+                            focusedBorder: fieldBorder.copyWith(
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 1.6,
+                              ),
+                            ),
+                            enabledBorder: fieldBorder,
+                          ),
+                          items: ContactValidation.allowedTypes
+                              .map(
+                                (type) => DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(type),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _isSubmitting
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _selectedType = value;
+                                  });
+                                },
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Select a contact type.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _isSubmitting
+                                    ? null
+                                    : () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: primaryColor,
+                                  side: const BorderSide(
+                                    color: primaryColor,
+                                  ),
+                                ),
+                                child: const Text('Cancel'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: _isSubmitting ? null : _submit,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text(
+                                  _isSubmitting ? 'Saving...' : 'Add Contact',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
