@@ -8,7 +8,7 @@ import 'package:project_bihon/features/preparedness_instruction/ui/category_grid
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
 
 void main() {
-  const pumpSlice = Duration(milliseconds: 100);
+  const pumpSlice = Duration(milliseconds: 500);
 
   DashboardSnapshot sampleSnapshot() {
     return DashboardSnapshot(

@@ -33,7 +33,14 @@ import 'package:project_bihon/shared/models/household.dart';
 /// 5. Airplane mode test:
 ///    → Same ordering, highlighting, and functionality from cached data only
 class AlertsListPage extends StatefulWidget {
-  const AlertsListPage({super.key});
+  const AlertsListPage({
+    super.key,
+    this.showBottomNavigation = true,
+    this.onTabSelected,
+  });
+
+  final bool showBottomNavigation;
+  final ValueChanged<int>? onTabSelected;
 
   @override
   State<AlertsListPage> createState() => _AlertsListPageState();
@@ -72,6 +79,12 @@ class _AlertsListPageState extends State<AlertsListPage> {
   }
 
   void _openTab(int index) {
+    final onTabSelected = widget.onTabSelected;
+    if (onTabSelected != null) {
+      onTabSelected(index);
+      return;
+    }
+
     final navigator = Navigator.of(context);
     final routeName = switch (index) {
       0 => '/home',
@@ -250,10 +263,12 @@ class _AlertsListPageState extends State<AlertsListPage> {
           const SizedBox(width: 8),
         ],
       ),
-      bottomNavigationBar: CrisyncBottomNavigation(
-        selectedIndex: 1,
-        onDestinationSelected: _openTab,
-      ),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? CrisyncBottomNavigation(
+              selectedIndex: 1,
+              onDestinationSelected: _openTab,
+            )
+          : null,
       body: ValueListenableBuilder<Box<CachedAlert>>(
         valueListenable: _alertsRepository.getAlertsListenable(),
         builder: (context, alertsBox, _) {
@@ -286,7 +301,7 @@ class _AlertsListPageState extends State<AlertsListPage> {
                 horizontalPadding,
                 DashboardDesign.gap,
                 horizontalPadding,
-                96,
+                widget.showBottomNavigation ? 96 : 24,
               ),
               child: Center(
                 child: ConstrainedBox(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/evacuation_centers/presentation/widgets/download_map_button.dart';
 import 'package:project_bihon/features/household/data/repositories/household_repository.dart';
@@ -71,29 +70,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       return;
     }
     navigator.pushReplacementNamed('/home');
-  }
-
-  void _openTab(int index) {
-    final navigator = Navigator.of(context);
-    final routeName = switch (index) {
-      0 => '/home',
-      1 => '/alerts',
-      2 => '/evacuation-centers',
-      3 => '/supplies',
-      4 => '/contacts',
-      _ => null,
-    };
-
-    if (routeName == null) {
-      return;
-    }
-
-    if (routeName == '/home') {
-      navigator.pushNamedAndRemoveUntil(routeName, (route) => false);
-      return;
-    }
-
-    navigator.pushReplacementNamed(routeName);
   }
 
   Future<void> _showRiskPicker() async {
@@ -183,10 +159,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           SizedBox(width: 56),
         ],
       ),
-      bottomNavigationBar: CrisyncBottomNavigation(
-        selectedIndex: null,
-        onDestinationSelected: _openTab,
-      ),
       body: FutureBuilder<void>(
         future: _loadingFuture,
         builder: (context, snapshot) {
@@ -197,7 +169,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           return SafeArea(
             top: false,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 104),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 768),

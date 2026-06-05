@@ -14,7 +14,16 @@ import 'package:url_launcher/url_launcher.dart';
 enum _ViewMode { list, map }
 
 class EvacuationCenterPage extends StatefulWidget {
-  const EvacuationCenterPage({super.key});
+  const EvacuationCenterPage({
+    super.key,
+    this.showBottomNavigation = true,
+    this.onTabSelected,
+    this.onMapInteractionChanged,
+  });
+
+  final bool showBottomNavigation;
+  final ValueChanged<int>? onTabSelected;
+  final ValueChanged<bool>? onMapInteractionChanged;
 
   @override
   State<EvacuationCenterPage> createState() => _EvacuationCenterPageState();
@@ -99,6 +108,12 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
   }
 
   void _openTab(int index) {
+    final onTabSelected = widget.onTabSelected;
+    if (onTabSelected != null) {
+      onTabSelected(index);
+      return;
+    }
+
     final navigator = Navigator.of(context);
     final routeName = switch (index) {
       0 => '/home',
@@ -292,6 +307,7 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
           child: EvacuationMapView(
             centers: _centers,
             userPosition: _userPosition,
+            onInteractionChanged: widget.onMapInteractionChanged,
           ),
         );
       },
@@ -333,10 +349,12 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
           const SizedBox(width: 8),
         ],
       ),
-      bottomNavigationBar: CrisyncBottomNavigation(
-        selectedIndex: 2,
-        onDestinationSelected: _openTab,
-      ),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? CrisyncBottomNavigation(
+              selectedIndex: 2,
+              onDestinationSelected: _openTab,
+            )
+          : null,
       floatingActionButton: FloatingActionButton(
         heroTag: 'evacuation-centers-refresh',
         onPressed: _loadCenters,
@@ -352,7 +370,7 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
             horizontalPadding,
             DashboardDesign.gap,
             horizontalPadding,
-            96,
+            widget.showBottomNavigation ? 96 : 24,
           ),
           child: Center(
             child: ConstrainedBox(

@@ -24,7 +24,14 @@ enum SupplySortOption {
 }
 
 class SupplyTrackerPage extends StatefulWidget {
-  const SupplyTrackerPage({super.key});
+  const SupplyTrackerPage({
+    super.key,
+    this.showBottomNavigation = true,
+    this.onTabSelected,
+  });
+
+  final bool showBottomNavigation;
+  final ValueChanged<int>? onTabSelected;
 
   @override
   State<SupplyTrackerPage> createState() => _SupplyTrackerPageState();
@@ -295,6 +302,12 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   }
 
   void _openTab(int index) {
+    final onTabSelected = widget.onTabSelected;
+    if (onTabSelected != null) {
+      onTabSelected(index);
+      return;
+    }
+
     final navigator = Navigator.of(context);
     final routeName = switch (index) {
       0 => '/home',
@@ -733,10 +746,12 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
           const SizedBox(width: 8),
         ],
       ),
-      bottomNavigationBar: CrisyncBottomNavigation(
-        selectedIndex: 3,
-        onDestinationSelected: _openTab,
-      ),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? CrisyncBottomNavigation(
+              selectedIndex: 3,
+              onDestinationSelected: _openTab,
+            )
+          : null,
       floatingActionButton: FloatingActionButton(
         heroTag: 'supply-tracker-add',
         onPressed: _handleAddItem,
@@ -770,7 +785,7 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                 horizontalPadding,
                 DashboardDesign.gap,
                 horizontalPadding,
-                96,
+                widget.showBottomNavigation ? 96 : 24,
               ),
               child: Center(
                 child: ConstrainedBox(

@@ -12,7 +12,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 class ContactsPage extends StatefulWidget {
-  const ContactsPage({super.key});
+  const ContactsPage({
+    super.key,
+    this.showBottomNavigation = true,
+    this.onTabSelected,
+  });
+
+  final bool showBottomNavigation;
+  final ValueChanged<int>? onTabSelected;
 
   @override
   State<ContactsPage> createState() => _ContactsPageState();
@@ -231,6 +238,12 @@ class _ContactsPageState extends State<ContactsPage> {
   }
 
   void _openTab(int index) {
+    final onTabSelected = widget.onTabSelected;
+    if (onTabSelected != null) {
+      onTabSelected(index);
+      return;
+    }
+
     final navigator = Navigator.of(context);
     final routeName = switch (index) {
       0 => '/home',
@@ -599,10 +612,12 @@ class _ContactsPageState extends State<ContactsPage> {
           const SizedBox(width: 8),
         ],
       ),
-      bottomNavigationBar: CrisyncBottomNavigation(
-        selectedIndex: 4,
-        onDestinationSelected: _openTab,
-      ),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? CrisyncBottomNavigation(
+              selectedIndex: 4,
+              onDestinationSelected: _openTab,
+            )
+          : null,
       body: ValueListenableBuilder<Box<Contact>>(
         valueListenable: _repository.getContactsListenable(),
         builder: (context, box, _) {
@@ -616,7 +631,7 @@ class _ContactsPageState extends State<ContactsPage> {
                 horizontalPadding,
                 DashboardDesign.gap,
                 horizontalPadding,
-                96,
+                widget.showBottomNavigation ? 96 : 24,
               ),
               child: Center(
                 child: ConstrainedBox(

@@ -4,16 +4,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
-import 'features/alerts/presentation/pages/alerts_list_page.dart';
-import 'features/dashboard/presentation/pages/dashboard_page.dart';
-import 'features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
-import 'features/dashboard/presentation/widgets/dashboard_design.dart';
+import 'features/dashboard/presentation/pages/main_tab_shell.dart';
 import 'features/evacuation_centers/data/models/cached_evac_center.dart';
 import 'features/evacuation_centers/data/repositories/evacuation_center_repository.dart';
-import 'features/evacuation_centers/presentation/pages/evacuation_center_page.dart';
 import 'features/emergency_contacts/data/models/contact.dart';
 import 'features/emergency_contacts/data/repositories/contact_repository.dart';
-import 'features/emergency_contacts/presentation/pages/contacts_page.dart';
 import 'features/emergency_contacts/presentation/pages/safety_status_page.dart';
 import 'features/household/data/repositories/household_repository.dart';
 import 'features/household/presentation/pages/onboarding_page.dart';
@@ -22,7 +17,6 @@ import 'features/preparedness_instruction/models/instruction_guide.dart';
 import 'features/preparedness_instruction/repositories/instruction_guide_repository.dart';
 import 'features/preparedness_instruction/ui/category_grid.dart';
 import 'features/preparedness_instruction/ui/guide_viewer.dart';
-import 'features/supply_tracker/presentation/pages/supply_tracker_page.dart';
 import 'features/supply_tracker/data/models/supply_item.dart';
 import 'features/supply_tracker/data/repositories/supply_repository.dart';
 import 'shared/models/household.dart';
@@ -133,14 +127,30 @@ class _MyAppState extends State<MyApp> {
         },
       ),
       onGenerateRoute: (settings) {
-        if (settings.name == '/home') {
+        final mainTabIndex = switch (settings.name) {
+          '/home' => 0,
+          '/alerts' => 1,
+          '/evacuation-centers' => 2,
+          '/supplies' => 3,
+          '/contacts' => 4,
+          _ => null,
+        };
+
+        if (mainTabIndex != null) {
           return PageRouteBuilder(
             settings: settings,
             pageBuilder: (context, animation, secondaryAnimation) {
               return ShadToaster(
-                child: HomePage(
+                child: MainTabShell(
+                  initialIndex: mainTabIndex,
                   themeMode: _themeMode,
                   onThemeChanged: _onThemeChanged,
+                  supplyRepository: _supplyRepository,
+                  alertsRepository: _alertsRepository,
+                  contactRepository: _contactRepository,
+                  householdRepository: _householdRepository,
+                  evacuationCenterRepository: _evacuationCenterRepository,
+                  instructionGuideRepository: _instructionGuideRepository,
                 ),
               );
             },
@@ -151,18 +161,6 @@ class _MyAppState extends State<MyApp> {
               );
             },
             transitionDuration: const Duration(milliseconds: 500),
-          );
-        }
-        if (settings.name == '/contacts') {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (context) => const ContactsPage(),
-          );
-        }
-        if (settings.name == '/supplies') {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (context) => const SupplyTrackerPage(),
           );
         }
         if (settings.name == '/safety-status') {
@@ -190,12 +188,6 @@ class _MyAppState extends State<MyApp> {
             ),
           );
         }
-        if (settings.name == '/alerts') {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (context) => const AlertsListPage(),
-          );
-        }
         if (settings.name == PreparednessCategoryGridPage.routeName) {
           return MaterialPageRoute<void>(
             settings: settings,
@@ -221,122 +213,8 @@ class _MyAppState extends State<MyApp> {
             },
           );
         }
-        if (settings.name == '/evacuation-centers') {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (context) => const EvacuationCenterPage(),
-          );
-        }
         return null;
       },
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  final ThemeMode themeMode;
-  final ValueChanged<ThemeMode> onThemeChanged;
-  final Widget? dashboardBody;
-
-  const HomePage({
-    super.key,
-    required this.themeMode,
-    required this.onThemeChanged,
-    this.dashboardBody,
-  });
-
-  void _openTab(BuildContext context, int index) {
-    final routeName = switch (index) {
-      0 => null,
-      1 => '/alerts',
-      2 => '/evacuation-centers',
-      3 => '/supplies',
-      4 => '/contacts',
-      _ => null,
-    };
-
-    if (routeName != null) {
-      Navigator.of(context).pushNamed(routeName);
-    }
-  }
-
-  Widget _buildLogoAvatar() {
-    return CircleAvatar(
-      radius: 18,
-      backgroundColor: DashboardDesign.deepNavy,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/logo.png',
-          width: 36,
-          height: 36,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.shield_outlined,
-              color: Colors.white,
-              size: 20,
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 56,
-        backgroundColor: DashboardDesign.surface(context),
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        titleSpacing: 16,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildLogoAvatar(),
-            const SizedBox(width: 10),
-            const Text(
-              'Crisync',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Center(
-              child: AppThemeSwitcher(
-                themeMode: themeMode,
-                onChanged: onThemeChanged,
-                showLabel: false,
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Profile Settings',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/profile-settings');
-            },
-            icon: const Icon(Icons.settings_outlined),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      bottomNavigationBar: CrisyncBottomNavigation(
-        selectedIndex: 0,
-        onDestinationSelected: (index) => _openTab(context, index),
-      ),
-      body: dashboardBody ??
-          DashboardPage(
-            supplyRepository: _supplyRepository,
-            alertsRepository: _alertsRepository,
-            contactRepository: _contactRepository,
-            householdRepository: _householdRepository,
-            evacuationCenterRepository: _evacuationCenterRepository,
-            instructionGuideRepository: _instructionGuideRepository,
-          ),
     );
   }
 }

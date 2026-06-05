@@ -20,6 +20,7 @@ class EvacuationMapView extends StatelessWidget {
     super.key,
     required this.centers,
     this.userPosition,
+    this.onInteractionChanged,
   });
 
   /// List of evacuation centers to display as markers.
@@ -27,6 +28,9 @@ class EvacuationMapView extends StatelessWidget {
 
   /// Optional user position; if provided, map centers on user and shows user marker.
   final Position? userPosition;
+
+  /// Notifies a parent swipe container when the user is interacting with the map.
+  final ValueChanged<bool>? onInteractionChanged;
 
   Color _getMarkerColor(String status) {
     switch (status.toLowerCase()) {
@@ -154,18 +158,23 @@ class EvacuationMapView extends StatelessWidget {
       ),
     ];
 
-    return fm.FlutterMap(
-      options: fm.MapOptions(
-        initialCenter: mapCenter,
-        initialZoom: mapZoom,
-      ),
-      children: [
-        fm.TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.project_bihon',
+    return Listener(
+      onPointerDown: (_) => onInteractionChanged?.call(true),
+      onPointerUp: (_) => onInteractionChanged?.call(false),
+      onPointerCancel: (_) => onInteractionChanged?.call(false),
+      child: fm.FlutterMap(
+        options: fm.MapOptions(
+          initialCenter: mapCenter,
+          initialZoom: mapZoom,
         ),
-        fm.MarkerLayer(markers: markers),
-      ],
+        children: [
+          fm.TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.example.project_bihon',
+          ),
+          fm.MarkerLayer(markers: markers),
+        ],
+      ),
     );
   }
 }

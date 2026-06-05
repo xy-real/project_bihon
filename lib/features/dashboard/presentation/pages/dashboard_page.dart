@@ -25,11 +25,13 @@ class DashboardPage extends StatelessWidget {
     required this.householdRepository,
     required this.evacuationCenterRepository,
     required this.instructionGuideRepository,
+    this.onOpenMainTab,
   }) : snapshot = null;
 
   const DashboardPage.fromSnapshot({
     super.key,
     required DashboardSnapshot this.snapshot,
+    this.onOpenMainTab,
   })  : supplyRepository = null,
         alertsRepository = null,
         contactRepository = null,
@@ -47,8 +49,23 @@ class DashboardPage extends StatelessWidget {
   final EvacuationCenterRepository? evacuationCenterRepository;
   final InstructionGuideRepository? instructionGuideRepository;
   final DashboardSnapshot? snapshot;
+  final ValueChanged<int>? onOpenMainTab;
 
   void _open(BuildContext context, String routeName) {
+    final mainTabIndex = switch (routeName) {
+      '/home' => 0,
+      '/alerts' => 1,
+      '/evacuation-centers' => 2,
+      '/supplies' => 3,
+      '/contacts' => 4,
+      _ => null,
+    };
+
+    if (mainTabIndex != null && onOpenMainTab != null) {
+      onOpenMainTab!(mainTabIndex);
+      return;
+    }
+
     Navigator.of(context).pushNamed(routeName);
   }
 
@@ -447,12 +464,14 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final snapshot = this.snapshot;
     if (snapshot != null) {
-      return _buildDashboard(
-        context: context,
-        supplies: snapshot.supplies,
-        alerts: snapshot.alerts,
-        contacts: snapshot.contacts,
-        centers: snapshot.centers,
+      return Scaffold(
+        body: _buildDashboard(
+          context: context,
+          supplies: snapshot.supplies,
+          alerts: snapshot.alerts,
+          contacts: snapshot.contacts,
+          centers: snapshot.centers,
+        ),
       );
     }
 
