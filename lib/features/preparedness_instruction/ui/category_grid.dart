@@ -458,120 +458,130 @@ class _CategoryCard extends StatelessWidget {
     final isComplete = totalCount > 0 && completedCount == totalCount;
     final visual = _CategoryVisual.forCategory(category);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
         borderRadius: BorderRadius.circular(DashboardDesign.radius),
-        onTap: onTap,
-        child: Ink(
-          decoration: BoxDecoration(
-            color: DashboardDesign.surface(context),
-            borderRadius: BorderRadius.circular(DashboardDesign.radius),
-            border: Border.all(color: DashboardDesign.outline(context)),
-            boxShadow: DashboardDesign.cardShadow(context),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 5,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: visual.accent),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ColoredBox(
+                  color: visual.accent,
+                  child: const SizedBox(width: 5),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(17, 14, 12, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: DashboardDesign.statusBackground(
-                              context,
-                              visual.accent,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: DashboardDesign.statusBackground(
+                                  context,
+                                  visual.accent,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  DashboardDesign.compactRadius,
+                                ),
+                              ),
+                              child: Icon(
+                                visual.icon,
+                                color: visual.accent,
+                                size: 20,
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(
-                              DashboardDesign.compactRadius,
+                            const Spacer(),
+                            if (isComplete)
+                              const Icon(
+                                Icons.check_circle,
+                                color: DashboardDesign.success,
+                                size: 19,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          category,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.12,
+                                  ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          '$totalCount ${totalCount == 1 ? 'guide' : 'guides'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: DashboardDesign.mutedText(context),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            minHeight: 6,
+                            value: progress,
+                            backgroundColor:
+                                DashboardDesign.surfaceVariant(context),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isComplete
+                                  ? DashboardDesign.success
+                                  : visual.accent,
                             ),
-                          ),
-                          child: Icon(
-                            visual.icon,
-                            color: visual.accent,
-                            size: 22,
                           ),
                         ),
-                        const Spacer(),
-                        if (isComplete)
-                          const Icon(
-                            Icons.check_circle,
-                            color: DashboardDesign.success,
-                            size: 20,
-                          ),
+                        const SizedBox(height: 7),
+                        Text(
+                          _progressText(completedCount, totalCount),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: isComplete
+                                        ? DashboardDesign.success
+                                        : DashboardDesign.mutedText(context),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          isComplete ? 'All read' : '$unreadCount unread',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: DashboardDesign.mutedText(context),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      category,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            height: 1.15,
-                          ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '$totalCount ${totalCount == 1 ? 'guide' : 'guides'}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: DashboardDesign.mutedText(context),
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        minHeight: 7,
-                        value: progress,
-                        backgroundColor: DashboardDesign.surfaceVariant(context),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isComplete ? DashboardDesign.success : visual.accent,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _progressText(completedCount, totalCount),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isComplete
-                                ? DashboardDesign.success
-                                : DashboardDesign.mutedText(context),
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isComplete ? 'All read' : '$unreadCount unread',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: DashboardDesign.mutedText(context),
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -596,66 +606,70 @@ class _SuggestCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
         borderRadius: BorderRadius.circular(DashboardDesign.radius),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: DashboardDesign.surface(context),
-            borderRadius: BorderRadius.circular(DashboardDesign.radius),
-            border: Border.all(
-              color: DashboardDesign.outline(context),
-              style: BorderStyle.solid,
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: DashboardDesign.surfaceVariant(context),
+                    borderRadius:
+                        BorderRadius.circular(DashboardDesign.compactRadius),
+                  ),
+                  child: Icon(
+                    Icons.add_task_outlined,
+                    color: DashboardDesign.mutedText(context),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Suggest Category',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        height: 1.12,
+                      ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Request a new guide topic',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: DashboardDesign.mutedText(context),
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Not available yet',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: DashboardDesign.mutedText(context),
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ],
             ),
-            boxShadow: DashboardDesign.cardShadow(context),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: DashboardDesign.surfaceVariant(context),
-                  borderRadius:
-                      BorderRadius.circular(DashboardDesign.compactRadius),
-                ),
-                child: Icon(
-                  Icons.add_task_outlined,
-                  color: DashboardDesign.mutedText(context),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Suggest Category',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      height: 1.15,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Request a new guide topic',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: DashboardDesign.mutedText(context),
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 28),
-              Text(
-                'Not available yet',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: DashboardDesign.mutedText(context),
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-            ],
           ),
         ),
       ),

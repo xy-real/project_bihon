@@ -5,6 +5,7 @@ import 'package:project_bihon/features/alerts/data/repositories/alerts_repositor
 import 'package:project_bihon/features/alerts/domain/threat_classification.dart';
 import 'package:project_bihon/features/alerts/presentation/widgets/alert_card_factory.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/household/data/repositories/household_repository.dart';
 import 'package:project_bihon/main.dart'
@@ -67,15 +68,6 @@ class _AlertsListPageState extends State<AlertsListPage> {
         duration: Duration(seconds: 2),
       ),
     );
-  }
-
-  void _handleBack() {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-      return;
-    }
-    navigator.pushReplacementNamed('/home');
   }
 
   void _openTab(int index) {
@@ -236,33 +228,7 @@ class _AlertsListPageState extends State<AlertsListPage> {
 
     return Scaffold(
       backgroundColor: DashboardDesign.background(context),
-      appBar: AppBar(
-        toolbarHeight: 56,
-        backgroundColor: DashboardDesign.surface(context),
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          tooltip: 'Back',
-          onPressed: _handleBack,
-          icon: const Icon(Icons.arrow_back),
-        ),
-        titleSpacing: 0,
-        title: const Text(
-          'Alerts',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Profile Settings',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/profile-settings');
-            },
-            icon: const Icon(Icons.settings_outlined),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: const CrisyncMainAppBar(),
       bottomNavigationBar: widget.showBottomNavigation
           ? CrisyncBottomNavigation(
               selectedIndex: 1,

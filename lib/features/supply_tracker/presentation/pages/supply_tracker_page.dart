@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart' as lucide;
 import 'package:uuid/uuid.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
 import 'package:project_bihon/features/supply_tracker/data/repositories/supply_repository.dart';
@@ -292,15 +293,6 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
-  void _handleBack() {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-      return;
-    }
-    navigator.pushReplacementNamed('/home');
-  }
-
   void _openTab(int index) {
     final onTabSelected = widget.onTabSelected;
     if (onTabSelected != null) {
@@ -327,12 +319,6 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     } else {
       navigator.pushReplacementNamed(routeName);
     }
-  }
-
-  void _handleStartChecklist() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Checklist is not available yet.')),
-    );
   }
 
   Widget _buildCardsView(List<SupplyItem> items) {
@@ -548,28 +534,6 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     return DashboardDesign.success;
   }
 
-  Widget _buildLogoAvatar() {
-    return CircleAvatar(
-      radius: 18,
-      backgroundColor: DashboardDesign.deepNavy,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/logo.png',
-          width: 36,
-          height: 36,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.shield_outlined,
-              color: Colors.white,
-              size: 20,
-            );
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeader() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -685,67 +649,11 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
-  Widget _buildStartChecklistButton() {
-    return FilledButton(
-      onPressed: _handleStartChecklist,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(54),
-        backgroundColor: DashboardDesign.deepNavy,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DashboardDesign.radius),
-        ),
-        textStyle: const TextStyle(fontWeight: FontWeight.w800),
-      ),
-      child: const Row(
-        children: [
-          Icon(lucide.LucideIcons.clipboardCheck),
-          SizedBox(width: 12),
-          Expanded(child: Text('Start Checklist')),
-          Icon(Icons.arrow_forward_rounded),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DashboardDesign.background(context),
-      appBar: AppBar(
-        toolbarHeight: 56,
-        backgroundColor: DashboardDesign.surface(context),
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          tooltip: 'Back',
-          onPressed: _handleBack,
-          icon: const Icon(Icons.arrow_back),
-        ),
-        titleSpacing: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildLogoAvatar(),
-            const SizedBox(width: 10),
-            const Text(
-              'Crisync',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Profile Settings',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/profile-settings');
-            },
-            icon: const Icon(Icons.settings_outlined),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: const CrisyncMainAppBar(),
       bottomNavigationBar: widget.showBottomNavigation
           ? CrisyncBottomNavigation(
               selectedIndex: 3,
@@ -796,8 +704,6 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
                       _buildHeader(),
                       const SizedBox(height: DashboardDesign.gap),
                       _buildFilters(items),
-                      const SizedBox(height: DashboardDesign.gap),
-                      _buildStartChecklistButton(),
                       const SizedBox(height: DashboardDesign.sectionGap),
                       _selectedView == SupplyTrackerView.cards
                           ? _buildCardsView(sortedItems)

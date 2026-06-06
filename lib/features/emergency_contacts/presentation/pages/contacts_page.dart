@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/emergency_contacts/data/models/contact.dart';
 import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository.dart';
@@ -226,15 +227,6 @@ class _ContactsPageState extends State<ContactsPage> {
         );
       }
     }
-  }
-
-  void _handleBack() {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-      return;
-    }
-    navigator.pushReplacementNamed('/home');
   }
 
   void _openTab(int index) {
@@ -586,33 +578,7 @@ class _ContactsPageState extends State<ContactsPage> {
 
     return Scaffold(
       backgroundColor: DashboardDesign.background(context),
-      appBar: AppBar(
-        toolbarHeight: 56,
-        backgroundColor: DashboardDesign.surface(context),
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          tooltip: 'Back',
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _handleBack,
-        ),
-        titleSpacing: 0,
-        title: const Text(
-          'Emergency Contacts',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Profile Settings',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).pushNamed('/profile-settings');
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: const CrisyncMainAppBar(),
       bottomNavigationBar: widget.showBottomNavigation
           ? CrisyncBottomNavigation(
               selectedIndex: 4,
