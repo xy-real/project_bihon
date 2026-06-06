@@ -58,7 +58,7 @@ List<InstructionGuide> getSeedGuides() {
       ],
       imageAssetPaths: const [
         'assets/images/guides/go_bag_1.png',
-        'assets/images/guides/go_bag_01_02.png',
+        'assets/images/guides/go_bag_2.png',
         'assets/images/guides/go_bag_1.png',
       ],
     ),

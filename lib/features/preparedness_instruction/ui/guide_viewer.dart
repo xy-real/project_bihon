@@ -3,8 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/preparedness_instruction/models/instruction_guide.dart';
 import 'package:project_bihon/features/preparedness_instruction/repositories/instruction_guide_repository.dart';
+import 'package:project_bihon/features/preparedness_instruction/ui/category_grid.dart';
 
 class PreparednessGuideViewerPage extends StatefulWidget {
   const PreparednessGuideViewerPage({
@@ -53,6 +56,9 @@ class _PreparednessGuideViewerPageState
   }
 
   String? _imagePath(InstructionGuide guide, int index) {
+    if (_isEmergencyKitGuide(guide) && index == 0) {
+      return 'assets/images/guides/emergency_guide_step_1.png';
+    }
     if (guide.imageAssetPaths.isEmpty) {
       return null;
     }
@@ -60,6 +66,58 @@ class _PreparednessGuideViewerPageState
       0,
       guide.imageAssetPaths.length - 1,
     )];
+  }
+
+  String? _fallbackImagePath(InstructionGuide guide, int index) {
+    if (!_isEmergencyKitGuide(guide) || index != 0) {
+      return null;
+    }
+    if (guide.imageAssetPaths.isEmpty) {
+      return null;
+    }
+    return guide.imageAssetPaths.first;
+  }
+
+  bool _isEmergencyKitGuide(InstructionGuide guide) {
+    final searchable = '${guide.id} ${guide.title} ${guide.category}'.toLowerCase();
+    return searchable.contains('go_bag') ||
+        searchable.contains('go bag') ||
+        searchable.contains('emergency kit') ||
+        searchable.contains('family readiness');
+  }
+
+  List<String> _checklistItemsFor(InstructionGuide guide) {
+    if (!_isEmergencyKitGuide(guide)) {
+      return const [];
+    }
+
+    return const [
+      'Drinking water',
+      'Ready-to-eat food',
+      'Medicines and first aid supplies',
+      'Flashlight and whistle',
+    ];
+  }
+
+  _StepContent _stepContentFor(InstructionGuide guide, int index) {
+    final text = _stepText(guide, index).trim();
+    final colonIndex = text.indexOf(': ');
+    if (colonIndex > 0 && colonIndex <= 48) {
+      return _StepContent(
+        title: text.substring(0, colonIndex).trim(),
+        body: text.substring(colonIndex + 2).trim(),
+      );
+    }
+
+    final dashIndex = text.indexOf(' - ');
+    if (dashIndex > 0 && dashIndex <= 48) {
+      return _StepContent(
+        title: text.substring(0, dashIndex).trim(),
+        body: text.substring(dashIndex + 3).trim(),
+      );
+    }
+
+    return _StepContent(title: guide.title, body: text);
   }
 
   void _precacheGuideImages(InstructionGuide guide) {
@@ -82,10 +140,8 @@ class _PreparednessGuideViewerPageState
   }
 
   Widget _buildImagePlaceholder(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return ColoredBox(
-      color: colorScheme.surfaceContainerHighest,
+      color: DashboardDesign.surfaceVariant(context),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -95,15 +151,16 @@ class _PreparednessGuideViewerPageState
               Icon(
                 Icons.image_not_supported_outlined,
                 size: 48,
-                color: colorScheme.onSurfaceVariant,
+                color: DashboardDesign.mutedText(context),
               ),
               const SizedBox(height: 12),
               Text(
-                'Instruction image unavailable',
+                'Image unavailable',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                      color: DashboardDesign.mutedText(context),
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
             ],
           ),
@@ -112,9 +169,13 @@ class _PreparednessGuideViewerPageState
     );
   }
 
-  Widget _buildGuideImage(BuildContext context, String? imagePath) {
+  Widget _buildGuideImage(
+    BuildContext context,
+    String? imagePath, {
+    String? fallbackImagePath,
+  }) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(DashboardDesign.radius),
       child: imagePath == null
           ? _buildImagePlaceholder(context)
           : Image.asset(
@@ -123,6 +184,18 @@ class _PreparednessGuideViewerPageState
               height: double.infinity,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) {
+                if (fallbackImagePath != null &&
+                    fallbackImagePath != imagePath) {
+                  return Image.asset(
+                    fallbackImagePath,
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _buildImagePlaceholder(context);
+                    },
+                  );
+                }
                 return _buildImagePlaceholder(context);
               },
             ),
@@ -151,65 +224,203 @@ class _PreparednessGuideViewerPageState
     await widget.repository.markGuideRead(guide.id);
   }
 
+  Widget _buildProgressSection(BuildContext context, InstructionGuide guide) {
+    final pageCount = _pageCountFor(guide);
+    final currentStep = (_currentPage + 1).clamp(1, pageCount);
+    final progress = pageCount == 0 ? 0.0 : currentStep / pageCount;
+    final percent = (progress * 100).round();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 768),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'STEP $currentStep OF $pageCount',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: DashboardDesign.mutedText(context),
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '$percent%',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: DashboardDesign.deepNavy,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 8,
+                  value: progress,
+                  backgroundColor: DashboardDesign.surfaceVariant(context),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    DashboardDesign.deepNavy,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildGuidePage(
     BuildContext context,
     InstructionGuide guide,
     int index,
   ) {
     final imagePath = _imagePath(guide, index);
+    final fallbackImagePath = _fallbackImagePath(guide, index);
+    final stepContent = _stepContentFor(guide, index);
+    final checklistItems = index == 0 ? _checklistItemsFor(guide) : const <String>[];
 
     return SafeArea(
       top: false,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final availableHeight = constraints.maxHeight;
-          final maxImageHeight = (availableHeight * 0.5).clamp(180.0, 280.0);
-          final maxImageWidth = math.max(
-            0.0,
-            math.min(360.0, constraints.maxWidth - 56),
-          );
-
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 768),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Flexible(
-                  flex: 3,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: maxImageWidth,
-                          maxHeight: maxImageHeight,
+                AspectRatio(
+                  aspectRatio: 16 / 10,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: DashboardDesign.surface(context),
+                      borderRadius: BorderRadius.circular(DashboardDesign.radius),
+                      boxShadow: DashboardDesign.cardShadow(context),
+                    ),
+                    child: _buildGuideImage(
+                      context,
+                      imagePath,
+                      fallbackImagePath: fallbackImagePath,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: DashboardDesign.gap),
+                _ContentCard(
+                  title: stepContent.title,
+                  body: stepContent.body,
+                ),
+                if (checklistItems.isNotEmpty) ...[
+                  const SizedBox(height: DashboardDesign.gap),
+                  _ChecklistCard(items: checklistItems),
+                ],
+                const SizedBox(height: 120),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionBar(InstructionGuide guide, int pageCount) {
+    return Material(
+      color: DashboardDesign.surface(context),
+      elevation: 8,
+      shadowColor: Colors.black.withValues(alpha: 0.10),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 768),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _currentPage == 0 ? null : _goToPrevious,
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Previous'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(DashboardDesign.radius),
                         ),
-                        child: _buildGuideImage(context, imagePath),
+                        side: BorderSide(color: DashboardDesign.outline(context)),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Step ${index + 1} of ${_pageCountFor(guide)}',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const SizedBox(height: 8),
-                Flexible(
-                  flex: 2,
-                  child: SingleChildScrollView(
-                    child: Text(
-                      _stepText(guide, index),
-                      style: Theme.of(context).textTheme.titleMedium,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _goToNext(guide),
+                      icon: Icon(
+                        _currentPage == pageCount - 1
+                            ? Icons.check
+                            : Icons.arrow_forward,
+                      ),
+                      label: Text(
+                        _currentPage == pageCount - 1 ? 'Finish' : 'Next',
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: DashboardDesign.deepNavy,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(DashboardDesign.radius),
+                        ),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
+  }
+
+  void _handleBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    navigator.pushReplacementNamed(PreparednessCategoryGridPage.routeName);
+  }
+
+  void _openTab(int index) {
+    final navigator = Navigator.of(context);
+    final routeName = switch (index) {
+      0 => '/home',
+      1 => '/alerts',
+      2 => '/evacuation-centers',
+      3 => '/supplies',
+      4 => '/contacts',
+      _ => null,
+    };
+
+    if (routeName == null) {
+      return;
+    }
+
+    if (index == 0) {
+      navigator.pushNamedAndRemoveUntil(routeName, (route) => false);
+    } else {
+      navigator.pushReplacementNamed(routeName);
+    }
   }
 
   void _goToPrevious() {
@@ -268,8 +479,20 @@ class _PreparednessGuideViewerPageState
   Widget _buildScaffold(BuildContext context, InstructionGuide? guide) {
     if (guide == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Guide unavailable')),
+        backgroundColor: DashboardDesign.background(context),
+        appBar: AppBar(
+          title: const Text('Emergency Guide'),
+          leading: IconButton(
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _handleBack,
+          ),
+        ),
         body: const Center(child: Text('This guide could not be found.')),
+        bottomNavigationBar: CrisyncBottomNavigation(
+          selectedIndex: null,
+          onDestinationSelected: _openTab,
+        ),
       );
     }
 
@@ -289,9 +512,27 @@ class _PreparednessGuideViewerPageState
     });
 
     return Scaffold(
-      appBar: AppBar(title: Text(guide.title)),
+      backgroundColor: DashboardDesign.background(context),
+      appBar: AppBar(
+        toolbarHeight: 56,
+        backgroundColor: DashboardDesign.surface(context),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _handleBack,
+        ),
+        titleSpacing: 0,
+        title: const Text(
+          'Emergency Guide',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
       body: Column(
         children: [
+          _buildProgressSection(context, guide),
           Expanded(
             child: PageView.builder(
               controller: _pageController,
@@ -307,37 +548,133 @@ class _PreparednessGuideViewerPageState
               },
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        ],
+      ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildActionBar(guide, pageCount),
+          CrisyncBottomNavigation(
+            selectedIndex: null,
+            onDestinationSelected: _openTab,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepContent {
+  const _StepContent({
+    required this.title,
+    required this.body,
+  });
+
+  final String title;
+  final String body;
+}
+
+class _ContentCard extends StatelessWidget {
+  const _ContentCard({
+    required this.title,
+    required this.body,
+  });
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            body,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                  height: 1.5,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChecklistCard extends StatelessWidget {
+  const _ChecklistCard({required this.items});
+
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Checklist',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 10),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _currentPage == 0 ? null : _goToPrevious,
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Previous'),
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: DashboardDesign.statusBackground(
+                        context,
+                        DashboardDesign.success,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: DashboardDesign.success,
+                      size: 16,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => _goToNext(guide),
-                      icon: Icon(
-                        _currentPage == pageCount - 1
-                            ? Icons.check
-                            : Icons.arrow_forward,
-                      ),
-                      label: Text(
-                        _currentPage == pageCount - 1 ? 'Finish' : 'Next',
-                      ),
+                    child: Text(
+                      item,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
         ],
       ),
     );

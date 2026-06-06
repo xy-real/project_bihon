@@ -1,13 +1,20 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:lucide_icons/lucide_icons.dart' as lucide;
 import 'package:uuid/uuid.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
 import 'package:project_bihon/features/supply_tracker/data/repositories/supply_repository.dart';
 import 'package:project_bihon/features/supply_tracker/presentation/widgets/widgets.dart';
+import 'package:project_bihon/main.dart'
+    show getLocalNotificationService, getSupplyRepository;
+import 'package:project_bihon/shared/services/local_notification_service.dart';
 import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:project_bihon/shared/widgets/app_toast.dart';
-import 'package:project_bihon/shared/services/local_notification_service.dart';
-import 'package:project_bihon/main.dart' show getLocalNotificationService, getSupplyRepository;
 
 enum SupplyTrackerView { cards, table }
 
@@ -20,15 +27,24 @@ enum SupplySortOption {
 }
 
 class SupplyTrackerPage extends StatefulWidget {
-  const SupplyTrackerPage({super.key});
+  const SupplyTrackerPage({
+    super.key,
+    this.showBottomNavigation = true,
+    this.onTabSelected,
+  });
+
+  final bool showBottomNavigation;
+  final ValueChanged<int>? onTabSelected;
 
   @override
   State<SupplyTrackerPage> createState() => _SupplyTrackerPageState();
 }
 
 class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
-  SupplyTrackerView _selectedView = SupplyTrackerView.table;
-  String _selectedCategoryFilter = 'All';
+  static const String _allCategoriesFilter = 'All Categories';
+
+  SupplyTrackerView _selectedView = SupplyTrackerView.cards;
+  String _selectedCategoryFilter = _allCategoriesFilter;
   SupplySortOption _selectedSortOption = SupplySortOption.expirationSoonest;
   late SupplyRepository _repository;
   late LocalNotificationService _notificationService;
@@ -41,7 +57,8 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   int _findItemIndexById(String itemId) {
@@ -61,62 +78,67 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
             bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
           ),
           child: SafeArea(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: SupplyTrackerEditCard(
-                title: 'Add Supply Item',
-                descriptionText: 'Create a new supply entry for your inventory.',
-                saveButtonLabel: 'Add Item',
-                initialName: '',
-                initialCategory: null,
-                initialImageUrl: null,
-                initialStockCount: 0,
-                initialExpirationDate: DateTime.now().add(const Duration(days: 30)),
-                onCancel: () {
-                  Navigator.of(sheetContext).pop();
-                },
-                onSave: ({
-                  required String itemName,
-                  required String category,
-                  required String? imageUrl,
-                  required int stockCount,
-                  required DateTime expirationDate,
-                }) async {
-                  const uuid = Uuid();
-                  final newItem = SupplyItem(
-                    id: uuid.v4(),
-                    name: itemName,
-                    category: category,
-                    imageUrl: imageUrl,
-                    quantity: stockCount,
-                    expirationDate: expirationDate,
-                  );
-
-                  if (mounted) {
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: SupplyTrackerEditCard(
+                  title: 'Add Supply Item',
+                  descriptionText:
+                      'Create a new supply entry for your inventory.',
+                  saveButtonLabel: 'Add Item',
+                  initialName: '',
+                  initialCategory: null,
+                  initialImageUrl: null,
+                  initialStockCount: 0,
+                  initialExpirationDate:
+                      DateTime.now().add(const Duration(days: 30)),
+                  onCancel: () {
                     Navigator.of(sheetContext).pop();
-                  }
-
-                  try {
-                    await _repository.addItem(newItem);
-                    await _notificationService.scheduleSupplyExpirationReminder(newItem);
+                  },
+                  onSave: ({
+                    required String itemName,
+                    required String category,
+                    required String? imageUrl,
+                    required int stockCount,
+                    required DateTime expirationDate,
+                  }) async {
+                    const uuid = Uuid();
+                    final newItem = SupplyItem(
+                      id: uuid.v4(),
+                      name: itemName,
+                      category: category,
+                      imageUrl: imageUrl,
+                      quantity: stockCount,
+                      expirationDate: expirationDate,
+                    );
 
                     if (mounted) {
-                      AppToast.success(
-                        context,
-                        title: 'Item added',
-                        message: newItem.name,
-                      );
+                      Navigator.of(sheetContext).pop();
                     }
-                  } catch (error) {
-                    if (mounted) {
-                      AppToast.errorFromException(
-                        context,
-                        title: 'Failed to add item',
-                        error: error,
-                      );
+
+                    try {
+                      await _repository.addItem(newItem);
+                      await _notificationService
+                          .scheduleSupplyExpirationReminder(newItem);
+
+                      if (mounted) {
+                        AppToast.success(
+                          context,
+                          title: 'Item added',
+                          message: newItem.name,
+                        );
+                      }
+                    } catch (error) {
+                      if (mounted) {
+                        AppToast.errorFromException(
+                          context,
+                          title: 'Failed to add item',
+                          error: error,
+                        );
+                      }
                     }
-                  }
-                },
+                  },
+                ),
               ),
             ),
           ),
@@ -237,35 +259,115 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     }
   }
 
+  Widget _buildSupplyDetailImage(
+    BuildContext context, {
+    required String imagePath,
+  }) {
+    Widget buildFallback() {
+      return ColoredBox(
+        color: DashboardDesign.surfaceVariant(context),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.image_not_supported_outlined,
+                color: DashboardDesign.mutedText(context),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Image unavailable',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: DashboardDesign.mutedText(context),
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final uri = Uri.tryParse(imagePath);
+    final isNetworkImage =
+        uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+    final image = imagePath.startsWith('assets/')
+        ? Image.asset(
+            imagePath,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => buildFallback(),
+          )
+        : isNetworkImage
+            ? Image.network(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => buildFallback(),
+              )
+            : Image.file(
+                File(imagePath),
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => buildFallback(),
+              );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        child: SizedBox(
+          width: double.infinity,
+          height: 180,
+          child: image,
+        ),
+      ),
+    );
+  }
+
   void _showItemDetailsDialog(BuildContext context, {required SupplyItem item}) {
+    final imagePath = item.imageUrl?.trim();
+    final hasImage = imagePath != null && imagePath.isNotEmpty;
+
     showDialog<void>(
       context: context,
       builder: (context) {
+        final detailsCard = SupplyTrackerItemCard(
+          itemName: item.name,
+          description: item.category,
+          stockCount: item.quantity,
+          expirationDate: item.expirationDate,
+          imageUrl: item.imageUrl,
+          supplyItem: item,
+          onTap: () {
+            Navigator.of(context).pop();
+          },
+          onEdit: () {
+            Navigator.of(context).pop();
+            _handleEdit(item);
+          },
+          onDelete: () {
+            Navigator.of(context).pop();
+            _handleDelete(item);
+          },
+        );
+
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: SupplyTrackerItemCard(
-                itemName: item.name,
-                description: item.category,
-                stockCount: item.quantity,
-                expirationDate: item.expirationDate,
-                imageUrl: item.imageUrl,
-                supplyItem: item,
-                onTap: () {
-                  Navigator.of(context).pop();
-                },
-                onEdit: () {
-                  Navigator.of(context).pop();
-                  _handleEdit(item);
-                },
-                onDelete: () {
-                  Navigator.of(context).pop();
-                  _handleDelete(item);
-                },
-              ),
+              child: hasImage
+                  ? SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildSupplyDetailImage(
+                            context,
+                            imagePath: imagePath,
+                          ),
+                          detailsCard,
+                        ],
+                      ),
+                    )
+                  : detailsCard,
             ),
           ),
         );
@@ -273,33 +375,65 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     );
   }
 
+  void _openTab(int index) {
+    final onTabSelected = widget.onTabSelected;
+    if (onTabSelected != null) {
+      onTabSelected(index);
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    final routeName = switch (index) {
+      0 => '/home',
+      1 => '/alerts',
+      2 => '/evacuation-centers',
+      3 => null,
+      4 => '/contacts',
+      _ => null,
+    };
+
+    if (routeName == null) {
+      return;
+    }
+
+    if (index == 0) {
+      navigator.pushNamedAndRemoveUntil(routeName, (route) => false);
+    } else {
+      navigator.pushReplacementNamed(routeName);
+    }
+  }
+
   Widget _buildCardsView(List<SupplyItem> items) {
+    if (items.isEmpty) {
+      return _EmptySupplyState(onAddItem: _handleAddItem);
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final columns = width >= 1000 ? 3 : width >= 640 ? 2 : 1;
-        final gap = 16.0;
+        final columns = width >= 760 ? 2 : 1;
+        const gap = DashboardDesign.gap;
         final cardWidth = (width - (gap * (columns - 1))) / columns;
 
         return Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (int i = 0; i < items.length; i++)
+            for (final item in items)
               SizedBox(
                 width: cardWidth,
                 child: SupplyTrackerItemCard(
-                  itemName: items[i].name,
-                  description: items[i].category,
-                  stockCount: items[i].quantity,
-                  expirationDate: items[i].expirationDate,
-                  supplyItem: items[i],
-                  imageUrl: items[i].imageUrl,
+                  itemName: item.name,
+                  description: item.category,
+                  stockCount: item.quantity,
+                  expirationDate: item.expirationDate,
+                  supplyItem: item,
+                  imageUrl: item.imageUrl,
                   onTap: () {
-                    _showItemDetailsDialog(context, item: items[i]);
+                    _showItemDetailsDialog(context, item: item);
                   },
-                  onEdit: () => _handleEdit(items[i]),
-                  onDelete: () => _handleDelete(items[i]),
+                  onEdit: () => _handleEdit(item),
+                  onDelete: () => _handleDelete(item),
                 ),
               ),
           ],
@@ -309,182 +443,142 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
   }
 
   Widget _buildTableView(List<SupplyItem> items) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 980),
-        child: DataTable(
-          columnSpacing: 20,
-          headingRowHeight: 48,
-          dataRowMinHeight: 56,
-          dataRowMaxHeight: 72,
-          columns: const [
-            DataColumn(label: Text('Item Name')),
-            DataColumn(label: Text('Category')),
-            DataColumn(label: Text('Quantity'), numeric: true),
-            DataColumn(label: Text('Expiration')),
-            DataColumn(label: Text('View More Details')),
-            DataColumn(label: Text('Edit')),
-            DataColumn(label: Text('Delete')),
-          ],
-          rows: [
-            for (int i = 0; i < items.length; i++)
-              DataRow(
-                cells: [
-                  DataCell(
-                    SizedBox(
-                      width: 180,
-                      child: Text(
-                        items[i].name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 120,
-                      child: Text(
-                        items[i].category,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  DataCell(Text('${items[i].quantity}')),
-                  DataCell(
-                    Row(
-                      children: [
-                        Text(
-                          _formatDate(items[i].expirationDate),
-                          style: TextStyle(
-                            color: items[i].isExpired
-                                ? Colors.red.shade600
-                                : items[i].expiresSoon
-                                    ? Colors.orange.shade600
-                                    : Colors.green.shade600,
-                            fontWeight: FontWeight.w600,
-                          ),
+    if (items.isEmpty) {
+      return _EmptySupplyState(onAddItem: _handleAddItem);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 900),
+          child: DataTable(
+            columnSpacing: 18,
+            headingRowHeight: 48,
+            dataRowMinHeight: 64,
+            dataRowMaxHeight: 72,
+            columns: const [
+              DataColumn(label: Text('Item Name')),
+              DataColumn(label: Text('Category')),
+              DataColumn(label: Text('Quantity'), numeric: true),
+              DataColumn(label: Text('Expiration')),
+              DataColumn(label: Text('Status')),
+              DataColumn(label: Text('Edit')),
+              DataColumn(label: Text('Delete')),
+            ],
+            rows: [
+              for (final item in items)
+                DataRow(
+                  onSelectChanged: (_) {
+                    _showItemDetailsDialog(context, item: item);
+                  },
+                  cells: [
+                    DataCell(
+                      SizedBox(
+                        width: 180,
+                        child: Text(
+                          item.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: items[i].isExpired
-                                ? Colors.red.shade100
-                                : items[i].expiresSoon
-                                    ? Colors.orange.shade100
-                                    : Colors.green.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            items[i].isExpired
-                                ? 'Expired'
-                                : items[i].expiresSoon
-                                    ? 'Expiring Soon'
-                                    : 'Good',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: items[i].isExpired
-                                  ? Colors.red.shade700
-                                  : items[i].expiresSoon
-                                      ? Colors.orange.shade700
-                                      : Colors.green.shade700,
-                            ),
-                          ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 120,
+                        child: Text(
+                          item.category,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                  ),
-                  DataCell(
-                    AppButton(
-                      onPressed: () {
-                        _showItemDetailsDialog(context, item: items[i]);
-                      },
-                      variant: AppButtonVariant.ghost,
-                      size: AppButtonSize.small,
-                      child: const Text('View details'),
-                    ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 84,
-                      child: AppButton(
-                        onPressed: () => _handleEdit(items[i]),
-                        variant: AppButtonVariant.outline,
-                        size: AppButtonSize.small,
-                        expands: true,
-                        lightBackgroundColor: Colors.amber.shade100,
-                        darkBackgroundColor: Colors.amber.shade200,
-                        lightForegroundColor: Colors.amber.shade900,
-                        darkForegroundColor: Colors.amber.shade900,
-                        lightBorderColor: Colors.amber.shade300,
-                        darkBorderColor: Colors.amber.shade200,
-                        leading: const Icon(Icons.edit_outlined, size: 14),
-                        child: const Text('Edit'),
                       ),
                     ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 92,
-                      child: AppButton(
-                        onPressed: () => _handleDelete(items[i]),
-                        variant: AppButtonVariant.destructive,
-                        size: AppButtonSize.small,
-                        expands: true,
-                        lightBackgroundColor: Colors.red.shade100,
-                        darkBackgroundColor: Colors.red.shade300,
-                        lightForegroundColor: Colors.red.shade800,
-                        darkForegroundColor: Colors.red.shade900,
-                        leading: const Icon(Icons.delete_outline, size: 14),
-                        child: const Text('Delete'),
+                    DataCell(Text('${item.quantity}')),
+                    DataCell(
+                      Text(
+                        _formatDate(item.expirationDate),
+                        style: TextStyle(
+                          color: _statusColorFor(item),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-          ],
+                    DataCell(_TableStatusBadge(item: item)),
+                    DataCell(
+                      SizedBox(
+                        width: 84,
+                        child: AppButton(
+                          onPressed: () => _handleEdit(item),
+                          variant: AppButtonVariant.outline,
+                          size: AppButtonSize.small,
+                          expands: true,
+                          lightBackgroundColor: Colors.amber.shade100,
+                          darkBackgroundColor: Colors.amber.shade200,
+                          lightForegroundColor: Colors.amber.shade900,
+                          darkForegroundColor: Colors.amber.shade900,
+                          lightBorderColor: Colors.amber.shade300,
+                          darkBorderColor: Colors.amber.shade200,
+                          leading: const Icon(Icons.edit_outlined, size: 14),
+                          child: const Text('Edit'),
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 92,
+                        child: AppButton(
+                          onPressed: () => _handleDelete(item),
+                          variant: AppButtonVariant.destructive,
+                          size: AppButtonSize.small,
+                          expands: true,
+                          lightBackgroundColor: Colors.red.shade100,
+                          darkBackgroundColor: Colors.red.shade300,
+                          lightForegroundColor: Colors.red.shade800,
+                          darkForegroundColor: Colors.red.shade900,
+                          leading:
+                              const Icon(Icons.delete_outline, size: 14),
+                          child: const Text('Delete'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCategoryFilterChips(List<SupplyItem> items) {
-    final categories = items.map((item) => item.category).toSet().toList()..sort();
-    final filters = ['All', ...categories];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final filter in filters)
-          ChoiceChip(
-            label: Text(filter),
-            selected: _selectedCategoryFilter == filter,
-            onSelected: (_) {
-              setState(() {
-                _selectedCategoryFilter = filter;
-              });
-            },
-          ),
-      ],
-    );
+  List<String> _categoryOptions(List<SupplyItem> items) {
+    final categories = items
+        .map((item) => item.category.trim())
+        .where((category) => category.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return [_allCategoriesFilter, ...categories];
   }
 
   String _sortLabel(SupplySortOption option) {
     switch (option) {
       case SupplySortOption.expirationSoonest:
-        return 'Expiration (Soonest)';
+        return 'Expiring Soon';
       case SupplySortOption.quantityLowToHigh:
-        return 'Quantity (Low to High)';
+        return 'Quantity low to high';
       case SupplySortOption.quantityHighToLow:
-        return 'Quantity (High to Low)';
+        return 'Quantity high to low';
       case SupplySortOption.nameAToZ:
-        return 'Name (A to Z)';
+        return 'Name A to Z';
       case SupplySortOption.categoryAToZ:
-        return 'Category (A to Z)';
+        return 'Category';
     }
   }
 
@@ -499,108 +593,351 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
       case SupplySortOption.quantityHighToLow:
         sorted.sort((a, b) => b.quantity.compareTo(a.quantity));
       case SupplySortOption.nameAToZ:
-        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
       case SupplySortOption.categoryAToZ:
-        sorted.sort((a, b) => a.category.toLowerCase().compareTo(b.category.toLowerCase()));
+        sorted.sort(
+          (a, b) =>
+              a.category.toLowerCase().compareTo(b.category.toLowerCase()),
+        );
     }
 
     return sorted;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<Box<SupplyItem>>(
-      valueListenable: _repository.getItemsListenable(),
-      builder: (context, box, _) {
-        final items = box.values.toList();
-        final filteredItems = _selectedCategoryFilter == 'All'
-            ? items
-            : items.where((item) => item.category == _selectedCategoryFilter).toList();
-        final sortedItems = _sortItems(filteredItems);
+  Color _statusColorFor(SupplyItem item) {
+    if (item.isExpired) {
+      return DashboardDesign.danger;
+    }
+    if (item.expiresSoon) {
+      return DashboardDesign.warning;
+    }
+    return DashboardDesign.success;
+  }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Supply Tracker',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              SegmentedButton<SupplyTrackerView>(
-                segments: const [
-                  ButtonSegment<SupplyTrackerView>(
-                    value: SupplyTrackerView.cards,
-                    label: Text('Card View'),
-                    icon: Icon(Icons.grid_view_rounded),
-                  ),
-                  ButtonSegment<SupplyTrackerView>(
-                    value: SupplyTrackerView.table,
-                    label: Text('Table View'),
-                    icon: Icon(Icons.table_rows_rounded),
-                  ),
-                ],
-                selected: <SupplyTrackerView>{_selectedView},
-                onSelectionChanged: (selection) {
-                  setState(() {
-                    _selectedView = selection.first;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              AppButton(
-                onPressed: _handleAddItem,
-                variant: AppButtonVariant.primary,
-                leading: const Icon(Icons.add_circle_outline, size: 16),
-                child: const Text('Add Item'),
-              ),
-              const SizedBox(height: 12),
-              _buildCategoryFilterChips(items),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    'Sort by:',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: DropdownButtonFormField<SupplySortOption>(
-                      initialValue: _selectedSortOption,
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
-                      items: SupplySortOption.values
-                          .map(
-                            (option) => DropdownMenuItem<SupplySortOption>(
-                              value: option,
-                              child: Text(_sortLabel(option)),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-
-                        setState(() {
-                          _selectedSortOption = value;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _selectedView == SupplyTrackerView.cards
-                  ? _buildCardsView(sortedItems)
-                  : _buildTableView(sortedItems),
-            ],
+  Widget _buildHeader() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            'Supply Tracker',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
           ),
+        ),
+        const SizedBox(width: 12),
+        SegmentedButton<SupplyTrackerView>(
+          showSelectedIcon: false,
+          style: SegmentedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            selectedBackgroundColor: DashboardDesign.deepNavy,
+            selectedForegroundColor: Colors.white,
+            foregroundColor: DashboardDesign.mutedText(context),
+            side: BorderSide(color: DashboardDesign.outline(context)),
+          ),
+          segments: const [
+            ButtonSegment<SupplyTrackerView>(
+              value: SupplyTrackerView.table,
+              label: Text('Table'),
+            ),
+            ButtonSegment<SupplyTrackerView>(
+              value: SupplyTrackerView.cards,
+              label: Text('Card'),
+            ),
+          ],
+          selected: <SupplyTrackerView>{_selectedView},
+          onSelectionChanged: (selection) {
+            setState(() {
+              _selectedView = selection.first;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilters(List<SupplyItem> items) {
+    final categories = _categoryOptions(items);
+    final selectedCategory = categories.contains(_selectedCategoryFilter)
+        ? _selectedCategoryFilter
+        : _allCategoriesFilter;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 640;
+        final categoryFilter = _FilterDropdown<String>(
+          label: 'Category',
+          value: selectedCategory,
+          items: categories
+              .map(
+                (category) => DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+            setState(() {
+              _selectedCategoryFilter = value;
+            });
+          },
+        );
+        final sortFilter = _FilterDropdown<SupplySortOption>(
+          label: 'Sort',
+          value: _selectedSortOption,
+          items: SupplySortOption.values
+              .map(
+                (option) => DropdownMenuItem<SupplySortOption>(
+                  value: option,
+                  child: Text(_sortLabel(option)),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+            setState(() {
+              _selectedSortOption = value;
+            });
+          },
+        );
+
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(child: categoryFilter),
+              const SizedBox(width: DashboardDesign.gap),
+              Expanded(child: sortFilter),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            categoryFilter,
+            const SizedBox(height: 12),
+            sortFilter,
+          ],
         );
       },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: DashboardDesign.background(context),
+      appBar: const CrisyncMainAppBar(),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? CrisyncBottomNavigation(
+              selectedIndex: 3,
+              onDestinationSelected: _openTab,
+            )
+          : null,
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'supply-tracker-add',
+        onPressed: _handleAddItem,
+        backgroundColor: DashboardDesign.deepNavy,
+        foregroundColor: Colors.white,
+        tooltip: 'Add supply item',
+        child: const Icon(Icons.add),
+      ),
+      body: ValueListenableBuilder<Box<SupplyItem>>(
+        valueListenable: _repository.getItemsListenable(),
+        builder: (context, box, _) {
+          final items = box.values.toList();
+          final categories = _categoryOptions(items);
+          final selectedCategory = categories.contains(_selectedCategoryFilter)
+              ? _selectedCategoryFilter
+              : _allCategoriesFilter;
+          final filteredItems = selectedCategory == _allCategoriesFilter
+              ? items
+              : items
+                  .where((item) => item.category == selectedCategory)
+                  .toList();
+          final sortedItems = _sortItems(filteredItems);
+          final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
+              ? DashboardDesign.marginTablet
+              : DashboardDesign.marginMobile;
+
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                DashboardDesign.gap,
+                horizontalPadding,
+                widget.showBottomNavigation ? 96 : 24,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: DashboardDesign.gap),
+                      _buildFilters(items),
+                      const SizedBox(height: DashboardDesign.sectionGap),
+                      _selectedView == SupplyTrackerView.cards
+                          ? _buildCardsView(sortedItems)
+                          : _buildTableView(sortedItems),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FilterDropdown<T> extends StatelessWidget {
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      key: ValueKey<Object?>(value),
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: DashboardDesign.surface(context),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+          borderSide: BorderSide(color: DashboardDesign.outline(context)),
+        ),
+      ),
+      items: items,
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _TableStatusBadge extends StatelessWidget {
+  const _TableStatusBadge({required this.item});
+
+  final SupplyItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.isExpired
+        ? DashboardDesign.danger
+        : item.expiresSoon
+            ? DashboardDesign.warning
+            : DashboardDesign.success;
+    final text = item.isExpired
+        ? 'EXPIRED'
+        : item.expiresSoon
+            ? 'SOON'
+            : 'OK';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: DashboardDesign.statusBackground(context, color),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
+      ),
+    );
+  }
+}
+
+class _EmptySupplyState extends StatelessWidget {
+  const _EmptySupplyState({required this.onAddItem});
+
+  final VoidCallback onAddItem;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: DashboardDesign.statusBackground(
+                context,
+                DashboardDesign.deepNavy,
+              ),
+            ),
+            child: const Icon(
+              lucide.LucideIcons.packagePlus,
+              color: DashboardDesign.deepNavy,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No supplies yet',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Add your first emergency supply item to start tracking readiness.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                ),
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: onAddItem,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Item'),
+            style: FilledButton.styleFrom(
+              backgroundColor: DashboardDesign.deepNavy,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DashboardDesign.radius),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

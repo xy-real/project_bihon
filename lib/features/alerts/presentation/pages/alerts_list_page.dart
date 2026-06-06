@@ -4,6 +4,9 @@ import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
 import 'package:project_bihon/features/alerts/domain/threat_classification.dart';
 import 'package:project_bihon/features/alerts/presentation/widgets/alert_card_factory.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/household/data/repositories/household_repository.dart';
 import 'package:project_bihon/main.dart'
     show getAlertsRepository, getHouseholdRepository;
@@ -31,7 +34,14 @@ import 'package:project_bihon/shared/models/household.dart';
 /// 5. Airplane mode test:
 ///    → Same ordering, highlighting, and functionality from cached data only
 class AlertsListPage extends StatefulWidget {
-  const AlertsListPage({super.key});
+  const AlertsListPage({
+    super.key,
+    this.showBottomNavigation = true,
+    this.onTabSelected,
+  });
+
+  final bool showBottomNavigation;
+  final ValueChanged<int>? onTabSelected;
 
   @override
   State<AlertsListPage> createState() => _AlertsListPageState();
@@ -53,11 +63,39 @@ class _AlertsListPageState extends State<AlertsListPage> {
   /// Currently shows a snackbar; later can navigate to detail page.
   void _onMoreDetails(CachedAlert alert) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Details for: ${alert.title}'),
-        duration: const Duration(seconds: 2),
+      const SnackBar(
+        content: Text('Alert details are not available yet.'),
+        duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  void _openTab(int index) {
+    final onTabSelected = widget.onTabSelected;
+    if (onTabSelected != null) {
+      onTabSelected(index);
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    final routeName = switch (index) {
+      0 => '/home',
+      1 => null,
+      2 => '/evacuation-centers',
+      3 => '/supplies',
+      4 => '/contacts',
+      _ => null,
+    };
+
+    if (routeName == null) {
+      return;
+    }
+
+    if (index == 0) {
+      navigator.pushNamedAndRemoveUntil(routeName, (route) => false);
+    } else {
+      navigator.pushReplacementNamed(routeName);
+    }
   }
 
   /// Calculate the risk classification from household, with safe fallback.
@@ -80,27 +118,46 @@ class _AlertsListPageState extends State<AlertsListPage> {
   ) {
     // Handle empty alerts (offline resilience: no crash)
     if (alerts.isEmpty) {
-      return Center(
+      return Container(
+        constraints: const BoxConstraints(minHeight: 220),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: DashboardDesign.surface(context),
+          borderRadius: BorderRadius.circular(DashboardDesign.radius),
+          border: Border.all(color: DashboardDesign.outline(context)),
+          boxShadow: DashboardDesign.cardShadow(context),
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: DashboardDesign.statusBackground(
+                  context,
+                  DashboardDesign.info,
+                ),
+              ),
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                color: DashboardDesign.info,
+                size: 28,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
               'No active alerts',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
                   ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              'Tap below to check for new alerts',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+              'Cached alerts will appear here when they are available.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: DashboardDesign.mutedText(context),
                   ),
             ),
           ],
@@ -111,34 +168,73 @@ class _AlertsListPageState extends State<AlertsListPage> {
     // Sort alerts using Step 2 logic (deterministic ordering)
     final sortedAlerts = sortAlerts(alerts, riskClassification);
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: sortedAlerts.length,
-      itemBuilder: (context, index) {
-        final alert = sortedAlerts[index];
+    return Column(
+      children: [
+        for (var index = 0; index < sortedAlerts.length; index++) ...[
+          Builder(
+            builder: (context) {
+              final alert = sortedAlerts[index];
 
-        // Classify threat using Step 2 logic
-        final threatBand = classifyThreat(alert, riskClassification);
+              // Classify threat using Step 2 logic
+              final threatBand = classifyThreat(alert, riskClassification);
 
-        // Render using Step 4 factory (correct card type based on threat band)
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: buildAlertCard(
-            alert: alert,
-            threatBand: threatBand,
-            onMoreDetails: () => _onMoreDetails(alert),
+              // Render using Step 4 factory (correct card type based on threat band)
+              return buildAlertCard(
+                alert: alert,
+                threatBand: threatBand,
+                onTap: threatBand == ThreatBand.direct
+                    ? () => _onMoreDetails(alert)
+                    : null,
+                onMoreDetails: threatBand == ThreatBand.direct
+                    ? () => _onMoreDetails(alert)
+                    : null,
+              );
+            },
           ),
-        );
-      },
+          if (index != sortedAlerts.length - 1)
+            const SizedBox(height: DashboardDesign.gap),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Alerts',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w900,
+              ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Stay updated with critical information in your area.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: DashboardDesign.mutedText(context),
+              ),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
+        ? DashboardDesign.marginTablet
+        : DashboardDesign.marginMobile;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Alerts'),
-      ),
+      backgroundColor: DashboardDesign.background(context),
+      appBar: const CrisyncMainAppBar(),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? CrisyncBottomNavigation(
+              selectedIndex: 1,
+              onDestinationSelected: _openTab,
+            )
+          : null,
       body: ValueListenableBuilder<Box<CachedAlert>>(
         valueListenable: _alertsRepository.getAlertsListenable(),
         builder: (context, alertsBox, _) {
@@ -164,21 +260,31 @@ class _AlertsListPageState extends State<AlertsListPage> {
           // - buildAlertCard() → pure widget, no network calls
           // → Fully functional in airplane mode
 
-          return _buildAlertsList(alerts, riskClassification);
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Refresh alerts',
-        onPressed: () {
-          // Placeholder for future sync logic (not in render path)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Alert sync would happen here (future feature)'),
-              duration: Duration(seconds: 2),
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                DashboardDesign.gap,
+                horizontalPadding,
+                widget.showBottomNavigation ? 96 : 24,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: DashboardDesign.gap),
+                      _buildAlertsList(alerts, riskClassification),
+                    ],
+                  ),
+                ),
+              ),
             ),
           );
         },
-        child: const Icon(Icons.refresh),
       ),
     );
   }

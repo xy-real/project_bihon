@@ -44,7 +44,7 @@ void main() {
       expect(find.byType(DirectThreatAlertCard), findsOneWidget);
       expect(find.text('Test Alert'), findsOneWidget);
       expect(find.text('This is a test alert content'), findsOneWidget);
-      expect(find.text('HIGH RISK FOR YOUR AREA'), findsOneWidget);
+      expect(find.text('URGENT'), findsOneWidget);
     });
 
     testWidgets('renders warning icon', (WidgetTester tester) async {
@@ -60,7 +60,7 @@ void main() {
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     });
 
-    testWidgets('displays severity badge', (WidgetTester tester) async {
+    testWidgets('displays urgent badge', (WidgetTester tester) async {
       final alert = createTestAlert(severity: 'High');
       await tester.pumpWidget(
         MaterialApp(
@@ -70,7 +70,7 @@ void main() {
         ),
       );
 
-      expect(find.text('HIGH'), findsOneWidget);
+      expect(find.text('URGENT'), findsOneWidget);
     });
 
     testWidgets('handles empty title gracefully', (WidgetTester tester) async {
@@ -113,7 +113,7 @@ void main() {
       );
 
       expect(find.byType(DirectThreatAlertCard), findsOneWidget);
-      expect(find.text('UNKNOWN'), findsOneWidget);
+      expect(find.text('URGENT'), findsOneWidget);
     });
 
     testWidgets('calls onTap callback when tapped', (WidgetTester tester) async {
@@ -151,7 +151,7 @@ void main() {
       );
 
       expect(find.text('More Details'), findsOneWidget);
-      expect(find.byIcon(Icons.info_outline), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
     });
 
     testWidgets('does not display "More Details" button when onMoreDetails is null',
@@ -223,7 +223,7 @@ void main() {
       expect(find.byType(GeneralAdvisoryAlertCard), findsOneWidget);
       expect(find.text('Test Alert'), findsOneWidget);
       expect(find.text('This is a test alert content'), findsOneWidget);
-      expect(find.text('General Baybay City Advisory'), findsOneWidget);
+      expect(find.text('ADVISORY'), findsOneWidget);
     });
 
     testWidgets('displays advisory type', (WidgetTester tester) async {
@@ -333,7 +333,7 @@ void main() {
       );
 
       expect(find.byType(GeneralAdvisoryAlertCard), findsOneWidget);
-      expect(find.text('General Baybay City Advisory'), findsOneWidget);
+      expect(find.text('ADVISORY'), findsOneWidget);
     });
   });
 
@@ -353,7 +353,7 @@ void main() {
       );
 
       expect(find.byType(DirectThreatAlertCard), findsOneWidget);
-      expect(find.text('HIGH RISK FOR YOUR AREA'), findsOneWidget);
+      expect(find.text('URGENT'), findsOneWidget);
     });
 
     testWidgets('buildAlertCard returns GeneralAdvisoryAlertCard for general threat',
@@ -371,7 +371,7 @@ void main() {
       );
 
       expect(find.byType(GeneralAdvisoryAlertCard), findsOneWidget);
-      expect(find.text('General Baybay City Advisory'), findsOneWidget);
+      expect(find.text('ADVISORY'), findsOneWidget);
     });
 
     testWidgets('AlertCardFactory widget renders DirectThreatAlertCard',

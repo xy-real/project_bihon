@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart' as lucide;
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
-import 'package:project_bihon/shared/widgets/app_button.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SupplyTrackerItemCard extends StatelessWidget {
   final String itemName;
@@ -30,15 +27,14 @@ class SupplyTrackerItemCard extends StatelessWidget {
     this.supplyItem,
   });
 
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
   bool get _isExpired {
     return supplyItem?.isExpired ?? DateTime.now().isAfter(expirationDate);
   }
 
   bool get _isExpiringSoon {
+    if (_isExpired) {
+      return false;
+    }
     if (supplyItem != null) {
       return supplyItem!.expiresSoon;
     }
@@ -46,367 +42,250 @@ class SupplyTrackerItemCard extends StatelessWidget {
     return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
   }
 
-  Color _getBorderColor() {
-    if (_isExpired) return Colors.red.shade300;
-    if (_isExpiringSoon) return Colors.orange.shade300;
-    return Colors.green.shade200;
-  }
-
-  Color _getBackgroundTint() {
+  Color get _statusColor {
     if (_isExpired) {
-      return Colors.red.shade50;
-    } else if (_isExpiringSoon) {
-      return Colors.orange.shade50;
-    } else {
-      return Colors.green.shade50;
+      return DashboardDesign.danger;
     }
+    if (_isExpiringSoon) {
+      return DashboardDesign.warning;
+    }
+    return DashboardDesign.success;
   }
 
-  bool _isNetworkImage(String? path) {
-    if (path == null || path.isEmpty) {
-      return false;
+  IconData get _categoryIcon {
+    final category = description.toLowerCase();
+    if (category.contains('water') || category.contains('hydrat')) {
+      return lucide.LucideIcons.droplets;
     }
-    final parsed = Uri.tryParse(path);
-    return parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https');
+    if (category.contains('med') ||
+        category.contains('medicine') ||
+        category.contains('medical')) {
+      return lucide.LucideIcons.pill;
+    }
+    if (category.contains('food')) {
+      return lucide.LucideIcons.utensils;
+    }
+    if (category.contains('tool')) {
+      return lucide.LucideIcons.wrench;
+    }
+    if (category.contains('hygiene')) {
+      return lucide.LucideIcons.sparkles;
+    }
+    return lucide.LucideIcons.package;
+  }
+
+  String get _statusLabel {
+    if (_isExpired) {
+      return 'EXPIRED';
+    }
+    if (_isExpiringSoon) {
+      final days = expirationDate.difference(DateTime.now()).inDays.clamp(0, 7);
+      return '$days ${days == 1 ? 'DAY' : 'DAYS'}!';
+    }
+    return 'OK';
+  }
+
+  String get _formattedExpirationDate {
+    return '${expirationDate.month.toString().padLeft(2, '0')}/'
+        '${expirationDate.day.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final isExpired = _isExpired;
-    final isExpiringSoon = _isExpiringSoon;
-    final theme = Theme.of(context).textTheme;
-    final borderColor = _getBorderColor();
-    final bgTint = _getBackgroundTint();
+    final theme = Theme.of(context);
+    final statusColor = _statusColor;
+    final hasActions = onEdit != null || onDelete != null;
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: borderColor, width: 2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: ShadCard(
-        padding: EdgeInsets.zero,
-        child: Container(
-          color: bgTint,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 270;
-                final imageAspectRatio = isCompact ? 4 / 3 : 16 / 9;
-                final iconSize = isCompact ? 12.0 : 13.0;
-                final titleSize = isCompact ? 12.0 : 13.0;
-                final descSize = isCompact ? 10.0 : 11.0;
-                final labelSize = isCompact ? 8.0 : 9.0;
-                final valueSize = isCompact ? 10.0 : 11.0;
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GestureDetector(
-                      onTap: onTap,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(8),
-                          topRight: Radius.circular(8),
-                        ),
-                        child: AspectRatio(
-                          aspectRatio: imageAspectRatio,
-                          child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: DashboardDesign.surface(context),
+            borderRadius: BorderRadius.circular(DashboardDesign.radius),
+            border: Border.all(color: DashboardDesign.outline(context)),
+            boxShadow: DashboardDesign.cardShadow(context),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(DashboardDesign.radius),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Container(
+                    width: 5,
+                    color: statusColor,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              border: Border(
-                                bottom: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                              shape: BoxShape.circle,
+                              color: DashboardDesign.statusBackground(
+                                context,
+                                statusColor,
                               ),
                             ),
-                            child: imageUrl != null
-                                ? _isNetworkImage(imageUrl)
-                                    ? Image.network(
-                                        imageUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return _buildImagePlaceholder(context, iconSize);
-                                        },
-                                      )
-                                    : Image.file(
-                                        File(imageUrl!),
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return _buildImagePlaceholder(context, iconSize);
-                                        },
-                                      )
-                                : _buildImagePlaceholder(context, iconSize),
+                            child: Icon(
+                              _categoryIcon,
+                              color: statusColor,
+                              size: 24,
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
                                   itemName,
-                                  maxLines: isCompact ? 2 : 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: theme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: titleSize,
-                                    height: 1.1,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: theme.colorScheme.onSurface,
                                   ),
                                 ),
-                              ),
-                              if (isExpired || isExpiringSoon) ...[
-                                const SizedBox(width: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: isExpired ? Colors.red.shade100 : Colors.orange.shade100,
-                                    borderRadius: BorderRadius.circular(3),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$description - $stockCount',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: DashboardDesign.mutedText(context),
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  child: Text(
-                                    isExpired ? 'Exp' : 'Soon',
-                                    style: theme.labelSmall?.copyWith(
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w700,
-                                      color: isExpired ? Colors.red.shade700 : Colors.orange.shade700,
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      lucide.LucideIcons.calendarDays,
+                                      size: 16,
+                                      color: DashboardDesign.mutedText(context),
                                     ),
-                                  ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        'Exp: $_formattedExpirationDate',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: DashboardDesign.mutedText(
+                                            context,
+                                          ),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              _StatusBadge(
+                                label: _statusLabel,
+                                color: statusColor,
+                              ),
+                              if (hasActions) ...[
+                                const SizedBox(height: 8),
+                                PopupMenuButton<_SupplyCardAction>(
+                                  tooltip: 'Supply item actions',
+                                  icon: const Icon(Icons.more_vert),
+                                  onSelected: (action) {
+                                    switch (action) {
+                                      case _SupplyCardAction.edit:
+                                        onEdit?.call();
+                                      case _SupplyCardAction.delete:
+                                        onDelete?.call();
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    if (onEdit != null)
+                                      const PopupMenuItem<_SupplyCardAction>(
+                                        value: _SupplyCardAction.edit,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.edit_outlined),
+                                            SizedBox(width: 8),
+                                            Text('Edit'),
+                                          ],
+                                        ),
+                                      ),
+                                    if (onDelete != null)
+                                      const PopupMenuItem<_SupplyCardAction>(
+                                        value: _SupplyCardAction.delete,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete_outline),
+                                            SizedBox(width: 8),
+                                            Text('Delete'),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            description,
-                            maxLines: isCompact ? 2 : 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.labelSmall?.copyWith(
-                              fontSize: descSize,
-                              height: 1.2,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          if (isCompact)
-                            Column(
-                              children: [
-                                _CompactInfoGroup(
-                                  icon: lucide.LucideIcons.package,
-                                  iconSize: iconSize,
-                                  iconColor: Colors.grey.shade600,
-                                  label: 'Stock',
-                                  value: '$stockCount',
-                                  labelStyle: theme.labelSmall?.copyWith(
-                                    fontSize: labelSize,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  valueStyle: theme.labelSmall?.copyWith(
-                                    fontSize: valueSize,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                _CompactInfoGroup(
-                                  icon: lucide.LucideIcons.calendar,
-                                  iconSize: iconSize,
-                                  iconColor: isExpired
-                                      ? Colors.red.shade600
-                                      : isExpiringSoon
-                                          ? Colors.orange.shade600
-                                          : Colors.green.shade600,
-                                  label: 'Date',
-                                  value: _formatDate(expirationDate).split('-').last,
-                                  labelStyle: theme.labelSmall?.copyWith(
-                                    fontSize: labelSize,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  valueStyle: theme.labelSmall?.copyWith(
-                                    fontSize: valueSize,
-                                    fontWeight: FontWeight.w700,
-                                    color: isExpired
-                                        ? Colors.red.shade600
-                                        : isExpiringSoon
-                                            ? Colors.orange.shade600
-                                            : Colors.green.shade600,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: _CompactInfoGroup(
-                                    icon: lucide.LucideIcons.package,
-                                    iconSize: iconSize,
-                                    iconColor: Colors.grey.shade600,
-                                    label: 'Stock',
-                                    value: '$stockCount',
-                                    labelStyle: theme.labelSmall?.copyWith(
-                                      fontSize: labelSize,
-                                      color: Colors.grey.shade600,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    valueStyle: theme.labelSmall?.copyWith(
-                                      fontSize: valueSize,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: _CompactInfoGroup(
-                                    icon: lucide.LucideIcons.calendar,
-                                    iconSize: iconSize,
-                                    iconColor: isExpired
-                                        ? Colors.red.shade600
-                                        : isExpiringSoon
-                                            ? Colors.orange.shade600
-                                            : Colors.green.shade600,
-                                    label: 'Date',
-                                    value: _formatDate(expirationDate),
-                                    labelStyle: theme.labelSmall?.copyWith(
-                                      fontSize: labelSize,
-                                      color: Colors.grey.shade600,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    valueStyle: theme.labelSmall?.copyWith(
-                                      fontSize: valueSize,
-                                      fontWeight: FontWeight.w700,
-                                      color: isExpired
-                                          ? Colors.red.shade600
-                                          : isExpiringSoon
-                                              ? Colors.orange.shade600
-                                              : Colors.green.shade600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          if (onEdit != null || onDelete != null) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                if (onEdit != null)
-                                  Expanded(
-                                    child: AppButton(
-                                      onPressed: onEdit,
-                                      variant: AppButtonVariant.outline,
-                                      size: AppButtonSize.small,
-                                      expands: true,
-                                      lightBackgroundColor: Colors.amber.shade100,
-                                      darkBackgroundColor: Colors.amber.shade200,
-                                      lightForegroundColor: Colors.amber.shade900,
-                                      darkForegroundColor: Colors.amber.shade900,
-                                      lightBorderColor: Colors.amber.shade300,
-                                      darkBorderColor: Colors.amber.shade200,
-                                      leading: const Icon(Icons.edit_outlined, size: 16),
-                                      child: const Text('Edit'),
-                                    ),
-                                  ),
-                                if (onEdit != null && onDelete != null)
-                                  const SizedBox(width: 8),
-                                if (onDelete != null)
-                                  Expanded(
-                                    child: AppButton(
-                                      onPressed: onDelete,
-                                      variant: AppButtonVariant.destructive,
-                                      size: AppButtonSize.small,
-                                      expands: true,
-                                      lightBackgroundColor: Colors.red.shade100,
-                                      darkBackgroundColor: Colors.red.shade300,
-                                      lightForegroundColor: Colors.red.shade800,
-                                      darkForegroundColor: Colors.red.shade900,
-                                      leading: const Icon(Icons.delete_outline, size: 16),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
                         ],
                       ),
                     ),
-                  ],
-                );
-              },
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-
-  Widget _buildImagePlaceholder(BuildContext context, double iconSize) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            lucide.LucideIcons.image,
-            size: iconSize * 2.5,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'No image',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.grey.shade500,
-                  fontSize: 10,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class _CompactInfoGroup extends StatelessWidget {
-  final IconData icon;
-  final double iconSize;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final TextStyle? labelStyle;
-  final TextStyle? valueStyle;
+enum _SupplyCardAction { edit, delete }
 
-  const _CompactInfoGroup({
-    required this.icon,
-    required this.iconSize,
-    required this.iconColor,
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({
     required this.label,
-    required this.value,
-    this.labelStyle,
-    this.valueStyle,
+    required this.color,
   });
+
+  final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: iconSize, color: iconColor),
-        const SizedBox(width: 3),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(label, style: labelStyle),
-              Text(value, style: valueStyle),
-            ],
-          ),
-        ),
-      ],
+    return Container(
+      constraints: const BoxConstraints(minHeight: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: DashboardDesign.statusBackground(context, color),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
+      ),
     );
   }
 }

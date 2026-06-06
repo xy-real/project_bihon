@@ -8,10 +8,13 @@ import 'package:project_bihon/shared/models/household.dart';
 /// loading, saving, and updating the risk_classification field.
 class HouseholdRepository {
   static const String boxName = 'household_box';
+  static const String settingsBoxName = 'household_settings_box';
   static const String defaultHouseholdId = 'default_household';
   static const String riskClassificationKey = 'risk_classification';
+  static const String hasCompletedOnboardingKey = 'has_completed_onboarding';
 
   late Box<Household> _box;
+  late Box<bool> _settingsBox;
 
   /// Initialize the household Hive box.
   ///
@@ -29,6 +32,29 @@ class HouseholdRepository {
         debugPrint('[HouseholdRepository] Household box successfully recovered');
       } catch (e2) {
         debugPrint('[HouseholdRepository] Fatal error recovering household_box: $e2');
+        rethrow;
+      }
+    }
+
+    try {
+      _settingsBox = await Hive.openBox<bool>(settingsBoxName);
+    } catch (e) {
+      debugPrint(
+        '[HouseholdRepository] Error opening household_settings_box: $e',
+      );
+      debugPrint(
+        '[HouseholdRepository] Clearing corrupted settings box and retrying',
+      );
+      try {
+        await Hive.deleteBoxFromDisk(settingsBoxName);
+        _settingsBox = await Hive.openBox<bool>(settingsBoxName);
+        debugPrint(
+          '[HouseholdRepository] Household settings box successfully recovered',
+        );
+      } catch (e2) {
+        debugPrint(
+          '[HouseholdRepository] Fatal error recovering settings box: $e2',
+        );
         rethrow;
       }
     }
@@ -68,6 +94,16 @@ class HouseholdRepository {
     return household?.risk_classification ?? 'unknown';
   }
 
+  /// Whether the first-install household location onboarding has completed.
+  bool hasCompletedOnboarding() {
+    return _settingsBox.get(hasCompletedOnboardingKey) ?? false;
+  }
+
+  /// Persist first-install onboarding completion state.
+  Future<void> setOnboardingCompleted({bool completed = true}) async {
+    await _settingsBox.put(hasCompletedOnboardingKey, completed);
+  }
+
   /// Update only the risk_classification field of the household.
   ///
   /// Creates the household if it doesn't exist, preserving other fields.
@@ -87,6 +123,7 @@ class HouseholdRepository {
   /// Used for testing or when user resets their profile.
   Future<void> clearAll() async {
     await _box.clear();
+    await _settingsBox.clear();
   }
 
   /// Check if a household exists in Hive.
