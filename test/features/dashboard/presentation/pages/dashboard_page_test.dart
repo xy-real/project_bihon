@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:project_bihon/features/ai_preparedness_score/models/ai_score_cache.dart';
+import 'package:project_bihon/features/ai_preparedness_score/services/ai_score_service.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:project_bihon/features/emergency_contacts/data/models/contact.dart';
@@ -59,6 +61,13 @@ void main() {
           status: 'Open',
         ),
       ],
+      aiScore: AIScoreCache(
+        overallScore: 82,
+        status: 'Prepared',
+        missingEssentialItems: const ['Battery-powered radio'],
+        customAdvice: 'Add communication supplies.',
+        calculatedAt: DateTime(2026, 6, 7),
+      ),
     );
   }
 
@@ -78,11 +87,13 @@ void main() {
   Future<void> pumpDashboard(
     WidgetTester tester, {
     DashboardSnapshot? snapshot,
+    Future<AIScoreCalculationResult> Function()? onRecalculateScore,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: DashboardPage.fromSnapshot(
           snapshot: snapshot ?? sampleSnapshot(),
+          onRecalculateScore: onRecalculateScore,
         ),
         routes: featureRoutes(),
       ),
@@ -100,8 +111,9 @@ void main() {
     await pumpDashboard(tester);
 
     expect(find.text('Your Preparedness Score'), findsOneWidget);
-    expect(find.text('Stay ready for any situation.'), findsOneWidget);
-    expect(find.text('65%'), findsOneWidget);
+    expect(find.text('Prepared'), findsOneWidget);
+    expect(find.text('82%'), findsOneWidget);
+    expect(find.text('Last updated 2026-06-07'), findsOneWidget);
     expect(find.text('1 of 12 essential supplies'), findsOneWidget);
     expect(find.text('2 family contacts added'), findsOneWidget);
     expect(find.text('1 active alert'), findsOneWidget);
@@ -156,6 +168,50 @@ void main() {
 
     expect(
       find.text('Report incident is not available yet.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows score fallback without recalculating on build',
+      (tester) async {
+    var recalculationCount = 0;
+
+    await pumpDashboard(
+      tester,
+      snapshot: const DashboardSnapshot(),
+      onRecalculateScore: () async {
+        recalculationCount++;
+        return AIScoreCalculationResult.failed(cachedScore: null);
+      },
+    );
+
+    expect(find.text('--'), findsOneWidget);
+    expect(find.text('Calculate your preparedness score'), findsOneWidget);
+    expect(find.text('Recalculate'), findsOneWidget);
+    expect(recalculationCount, 0);
+  });
+
+  testWidgets('offline recalculation shows the controlled cached-score message',
+      (tester) async {
+    final cachedScore = sampleSnapshot().aiScore!;
+    var recalculationCount = 0;
+
+    await pumpDashboard(
+      tester,
+      onRecalculateScore: () async {
+        recalculationCount++;
+        return AIScoreCalculationResult.offline(cachedScore: cachedScore);
+      },
+    );
+
+    await tester.tap(find.text('Recalculate'));
+    await tester.pump();
+
+    expect(recalculationCount, 1);
+    expect(
+      find.text(
+        'No internet connection. Showing your cached score from 2026-06-07.',
+      ),
       findsOneWidget,
     );
   });
