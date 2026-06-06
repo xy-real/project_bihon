@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart' as lucide;
@@ -257,35 +259,115 @@ class _SupplyTrackerPageState extends State<SupplyTrackerPage> {
     }
   }
 
+  Widget _buildSupplyDetailImage(
+    BuildContext context, {
+    required String imagePath,
+  }) {
+    Widget buildFallback() {
+      return ColoredBox(
+        color: DashboardDesign.surfaceVariant(context),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.image_not_supported_outlined,
+                color: DashboardDesign.mutedText(context),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Image unavailable',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: DashboardDesign.mutedText(context),
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final uri = Uri.tryParse(imagePath);
+    final isNetworkImage =
+        uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+    final image = imagePath.startsWith('assets/')
+        ? Image.asset(
+            imagePath,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => buildFallback(),
+          )
+        : isNetworkImage
+            ? Image.network(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => buildFallback(),
+              )
+            : Image.file(
+                File(imagePath),
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => buildFallback(),
+              );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        child: SizedBox(
+          width: double.infinity,
+          height: 180,
+          child: image,
+        ),
+      ),
+    );
+  }
+
   void _showItemDetailsDialog(BuildContext context, {required SupplyItem item}) {
+    final imagePath = item.imageUrl?.trim();
+    final hasImage = imagePath != null && imagePath.isNotEmpty;
+
     showDialog<void>(
       context: context,
       builder: (context) {
+        final detailsCard = SupplyTrackerItemCard(
+          itemName: item.name,
+          description: item.category,
+          stockCount: item.quantity,
+          expirationDate: item.expirationDate,
+          imageUrl: item.imageUrl,
+          supplyItem: item,
+          onTap: () {
+            Navigator.of(context).pop();
+          },
+          onEdit: () {
+            Navigator.of(context).pop();
+            _handleEdit(item);
+          },
+          onDelete: () {
+            Navigator.of(context).pop();
+            _handleDelete(item);
+          },
+        );
+
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: SupplyTrackerItemCard(
-                itemName: item.name,
-                description: item.category,
-                stockCount: item.quantity,
-                expirationDate: item.expirationDate,
-                imageUrl: item.imageUrl,
-                supplyItem: item,
-                onTap: () {
-                  Navigator.of(context).pop();
-                },
-                onEdit: () {
-                  Navigator.of(context).pop();
-                  _handleEdit(item);
-                },
-                onDelete: () {
-                  Navigator.of(context).pop();
-                  _handleDelete(item);
-                },
-              ),
+              child: hasImage
+                  ? SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildSupplyDetailImage(
+                            context,
+                            imagePath: imagePath,
+                          ),
+                          detailsCard,
+                        ],
+                      ),
+                    )
+                  : detailsCard,
             ),
           ),
         );
