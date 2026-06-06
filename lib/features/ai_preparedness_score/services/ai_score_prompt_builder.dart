@@ -49,10 +49,10 @@ Analyze this inventory against standard 3-day survival requirements for this hou
 
 Respond strictly in JSON format with this structure and no additional text:
 {
-  "score": <integer from 0 to 100>,
-  "status": "<Needs Improvement | Prepared | Highly Prepared>",
-  "missing_items": ["<item 1>", "<item 2>"],
-  "advice": "<short localized advice>"
+  "score": 0,
+  "status": "Needs Improvement",
+  "missing_items": [],
+  "advice": ""
 }''';
 }
 
