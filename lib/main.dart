@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/ai_preparedness_score/models/ai_score_cache.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/dashboard/presentation/pages/main_tab_shell.dart';
@@ -46,6 +47,10 @@ void main() async {
   Hive.registerAdapter(CachedAlertAdapter());
   Hive.registerAdapter(CachedEvacCenterAdapter());
   Hive.registerAdapter(InstructionGuideAdapter());
+  Hive.registerAdapter(AIScoreCacheAdapter());
+
+  // Open the offline cache for the latest AI preparedness score.
+  await Hive.openBox<AIScoreCache>(AIScoreCache.boxName);
 
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
