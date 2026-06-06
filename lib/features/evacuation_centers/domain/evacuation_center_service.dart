@@ -63,16 +63,24 @@ class EvacuationCenterService {
 
       // Sort by distance from user
       final centersWithDistance = centers.map((center) {
-        final distance = _calculateDistance(
-          userPosition.latitude,
-          userPosition.longitude,
-          center.latitude,
-          center.longitude,
-        );
+        final distance = center.hasValidCoordinates
+            ? _calculateDistance(
+                userPosition.latitude,
+                userPosition.longitude,
+                center.latitude,
+                center.longitude,
+              )
+            : double.infinity;
         return (center: center, distance: distance);
       }).toList();
 
-      centersWithDistance.sort((a, b) => a.distance.compareTo(b.distance));
+      centersWithDistance.sort((a, b) {
+        final distanceComparison = a.distance.compareTo(b.distance);
+        if (distanceComparison != 0) {
+          return distanceComparison;
+        }
+        return a.center.name.compareTo(b.center.name);
+      });
       return centersWithDistance.map((e) => e.center).toList();
     }
 
@@ -123,6 +131,10 @@ class EvacuationCenterService {
   /// }
   /// ```
   static double? distanceTo(CachedEvacCenter center, Position userPosition) {
+    if (!center.hasValidCoordinates) {
+      return null;
+    }
+
     try {
       return _calculateDistance(
         userPosition.latitude,

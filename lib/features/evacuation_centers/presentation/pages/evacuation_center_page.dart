@@ -1,5 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
@@ -17,11 +21,13 @@ enum _ViewMode { list, map }
 class EvacuationCenterPage extends StatefulWidget {
   const EvacuationCenterPage({
     super.key,
+    this.repository,
     this.showBottomNavigation = true,
     this.onTabSelected,
     this.onMapInteractionChanged,
   });
 
+  final EvacuationCenterRepository? repository;
   final bool showBottomNavigation;
   final ValueChanged<int>? onTabSelected;
   final ValueChanged<bool>? onMapInteractionChanged;
@@ -32,68 +38,110 @@ class EvacuationCenterPage extends StatefulWidget {
 
 class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
   late final EvacuationCenterRepository _repository;
+  late final ValueListenable<Box<CachedEvacCenter>> _centersListenable;
 
   _ViewMode _viewMode = _ViewMode.list;
-  bool _isLoading = true;
+  bool _isRefreshing = false;
   bool _isOffline = false;
 
-  List<CachedEvacCenter> _centers = [];
+  List<String> _orderedCenterIds = [];
   Position? _userPosition;
+  int? _lastLoggedCenterCount;
 
   @override
   void initState() {
     super.initState();
-    _repository = getEvacuationCenterRepository();
-    _loadCenters();
+    _repository = widget.repository ?? getEvacuationCenterRepository();
+    _centersListenable = _repository.getListenable();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_refreshCenters());
+      }
+    });
   }
 
-  Future<void> _loadCenters() async {
+  List<CachedEvacCenter> _sortAlphabetically(
+    List<CachedEvacCenter> centers,
+  ) {
+    return List<CachedEvacCenter>.from(centers)
+      ..sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  List<CachedEvacCenter> _orderCenters(
+    Iterable<CachedEvacCenter> cachedCenters,
+  ) {
+    final centers = _sortAlphabetically(cachedCenters.toList());
+    if (_orderedCenterIds.isEmpty) {
+      return centers;
+    }
+
+    final order = <String, int>{
+      for (var index = 0; index < _orderedCenterIds.length; index++)
+        _orderedCenterIds[index]: index,
+    };
+    centers.sort((a, b) {
+      final aIndex = order[a.id] ?? _orderedCenterIds.length;
+      final bIndex = order[b.id] ?? _orderedCenterIds.length;
+      final result = aIndex.compareTo(bIndex);
+      return result != 0 ? result : a.name.compareTo(b.name);
+    });
+    return centers;
+  }
+
+  Future<void> _refreshOrdering() async {
     try {
-      if (mounted) {
-        setState(() => _isLoading = true);
+      final cachedCenters = _repository.getAll();
+      if (cachedCenters.isEmpty) {
+        return;
       }
 
-      final allCenters = _repository.getAll();
       final sortedCenters =
-          await EvacuationCenterService.getSortedCenters(allCenters);
-      _userPosition = EvacuationCenterService.lastKnownPosition;
+          await EvacuationCenterService.getSortedCenters(cachedCenters);
 
-      try {
-        await _repository.syncFromSupabase();
-        final refreshedCenters = _repository.getAll();
-        final refreshedSorted =
-            await EvacuationCenterService.getSortedCenters(refreshedCenters);
-
-        if (!mounted) {
-          return;
-        }
-
-        setState(() {
-          _centers = refreshedSorted;
-          _isOffline = false;
-        });
-      } catch (_) {
-        if (!mounted) {
-          return;
-        }
-
-        setState(() {
-          _centers = sortedCenters;
-          _isOffline = true;
-        });
-      }
-    } catch (_) {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _centers = [];
-        _isOffline = true;
+        _orderedCenterIds = [
+          for (final center in sortedCenters) center.id,
+        ];
+        _userPosition = EvacuationCenterService.lastKnownPosition;
       });
+    } catch (error) {
+      debugPrint('[EvacuationCenters] Location sorting failed: $error');
+    }
+  }
+
+  Future<void> _refreshCenters() async {
+    if (_isRefreshing) {
+      return;
+    }
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      final syncSucceeded = await _repository.syncFromSupabase();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isOffline = !syncSucceeded;
+      });
+      unawaited(_refreshOrdering());
+    } catch (error) {
+      debugPrint('[EvacuationCenters] Failed to refresh screen data: $error');
+      if (mounted) {
+        setState(() {
+          _isOffline = true;
+        });
+      }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isRefreshing = false);
       }
     }
   }
@@ -127,6 +175,11 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
   }
 
   Future<void> _openDirections(CachedEvacCenter center) async {
+    if (!center.hasValidCoordinates) {
+      _showSnackBar('Directions are unavailable for this center.');
+      return;
+    }
+
     final uri = Uri.parse(
       'https://www.google.com/maps/dir/?api=1'
       '&destination=${center.latitude},${center.longitude}',
@@ -253,33 +306,37 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
     );
   }
 
-  Widget _buildListContent() {
-    if (_isLoading) {
+  Widget _buildListContent(List<CachedEvacCenter> centers) {
+    if (_isRefreshing && centers.isEmpty) {
       return const _LoadingCard();
     }
 
-    if (_centers.isEmpty) {
-      return const _EmptyCentersCard();
+    if (centers.isEmpty) {
+      return _EmptyCentersCard(onRefresh: _refreshCenters);
     }
 
     return Column(
       children: [
-        for (var index = 0; index < _centers.length; index++) ...[
+        for (var index = 0; index < centers.length; index++) ...[
           EvacCenterCard(
-            center: _centers[index],
-            distanceMeters: _distanceTo(_centers[index]),
-            onViewDirections: () => _openDirections(_centers[index]),
+            center: centers[index],
+            distanceMeters: _distanceTo(centers[index]),
+            onViewDirections: () => _openDirections(centers[index]),
           ),
-          if (index != _centers.length - 1)
+          if (index != centers.length - 1)
             const SizedBox(height: DashboardDesign.gap),
         ],
       ],
     );
   }
 
-  Widget _buildMapContent() {
-    if (_isLoading) {
+  Widget _buildMapContent(List<CachedEvacCenter> centers) {
+    if (_isRefreshing && centers.isEmpty) {
       return const _LoadingCard();
+    }
+
+    if (centers.isEmpty) {
+      return _EmptyCentersCard(onRefresh: _refreshCenters);
     }
 
     return LayoutBuilder(
@@ -296,7 +353,7 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
           ),
           clipBehavior: Clip.antiAlias,
           child: EvacuationMapView(
-            centers: _centers,
+            centers: centers,
             userPosition: _userPosition,
             onInteractionChanged: widget.onMapInteractionChanged,
           ),
@@ -322,41 +379,62 @@ class _EvacuationCenterPageState extends State<EvacuationCenterPage> {
           : null,
       floatingActionButton: FloatingActionButton(
         heroTag: 'evacuation-centers-refresh',
-        onPressed: _loadCenters,
+        onPressed: _isRefreshing ? null : _refreshCenters,
         backgroundColor: DashboardDesign.deepNavy,
         foregroundColor: Colors.white,
         tooltip: 'Refresh evacuation centers',
         child: const Icon(Icons.refresh),
       ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            DashboardDesign.gap,
-            horizontalPadding,
-            widget.showBottomNavigation ? 96 : 24,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_isOffline) ...[
-                    _buildOfflineBanner(),
-                    const SizedBox(height: DashboardDesign.gap),
-                  ],
-                  _buildHeader(),
-                  const SizedBox(height: DashboardDesign.gap),
-                  _viewMode == _ViewMode.list
-                      ? _buildListContent()
-                      : _buildMapContent(),
-                ],
+      body: ValueListenableBuilder<Box<CachedEvacCenter>>(
+        valueListenable: _centersListenable,
+        builder: (context, box, _) {
+          final centers = _orderCenters(box.values);
+          if (_lastLoggedCenterCount != centers.length) {
+            _lastLoggedCenterCount = centers.length;
+            debugPrint(
+              '[EvacuationCenters] UI read ${centers.length} centers '
+              'from ${EvacuationCenterRepository.boxName}.',
+            );
+          }
+
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                DashboardDesign.gap,
+                horizontalPadding,
+                widget.showBottomNavigation ? 96 : 24,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_isOffline) ...[
+                        _buildOfflineBanner(),
+                        const SizedBox(height: DashboardDesign.gap),
+                      ],
+                      _buildHeader(),
+                      const SizedBox(height: DashboardDesign.gap),
+                      if (_isRefreshing && centers.isNotEmpty) ...[
+                        const LinearProgressIndicator(
+                          minHeight: 2,
+                          color: DashboardDesign.deepNavy,
+                        ),
+                        const SizedBox(height: DashboardDesign.gap),
+                      ],
+                      _viewMode == _ViewMode.list
+                          ? _buildListContent(centers)
+                          : _buildMapContent(centers),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -385,7 +463,9 @@ class _LoadingCard extends StatelessWidget {
 }
 
 class _EmptyCentersCard extends StatelessWidget {
-  const _EmptyCentersCard();
+  const _EmptyCentersCard({required this.onRefresh});
+
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -427,7 +507,13 @@ class _EmptyCentersCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: DashboardDesign.mutedText(context),
-                ),
+              ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh'),
           ),
         ],
       ),

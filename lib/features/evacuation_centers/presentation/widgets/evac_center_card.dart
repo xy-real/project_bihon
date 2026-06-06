@@ -82,15 +82,18 @@ class EvacCenterCard extends StatelessWidget {
         boxShadow: DashboardDesign.cardShadow(context),
       ),
       clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(width: 5, color: status.color),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 5,
+            child: ColoredBox(color: status.color),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(21, 16, 16, 16),
+            child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -179,11 +182,9 @@ class EvacCenterCard extends StatelessWidget {
                       onCall: onCall,
                     ),
                   ],
-                ),
-              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

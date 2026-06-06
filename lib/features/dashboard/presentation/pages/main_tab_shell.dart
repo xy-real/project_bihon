@@ -183,6 +183,7 @@ class _MainTabShellState extends State<MainTabShell> {
       ),
       _KeepAliveTab(
         child: EvacuationCenterPage(
+          repository: widget.evacuationCenterRepository,
           showBottomNavigation: false,
           onTabSelected: _goToTab,
           onMapInteractionChanged: _handleMapInteractionChanged,

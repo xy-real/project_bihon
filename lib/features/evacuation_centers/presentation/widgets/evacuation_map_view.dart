@@ -127,7 +127,7 @@ class EvacuationMapView extends StatelessWidget {
             ),
           ),
         ),
-      ...centers.map(
+      ...centers.where((center) => center.hasValidCoordinates).map(
         (center) => fm.Marker(
           point: ll.LatLng(center.latitude, center.longitude),
           width: 40,

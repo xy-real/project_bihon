@@ -33,4 +33,14 @@ class CachedEvacCenter extends HiveObject {
     required this.capacity,
     required this.status,
   });
+
+  bool get hasValidCoordinates {
+    return latitude.isFinite &&
+        longitude.isFinite &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180 &&
+        !(latitude == 0 && longitude == 0);
+  }
 }
