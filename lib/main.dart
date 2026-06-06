@@ -3,6 +3,7 @@ import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/ai_preparedness_score/models/ai_score_cache.dart';
+import 'features/ai_preparedness_score/data/repositories/ai_score_repository.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/dashboard/presentation/pages/main_tab_shell.dart';
@@ -33,6 +34,7 @@ late AlertsRepository _alertsRepository;
 late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
 late InstructionGuideRepository _instructionGuideRepository;
+late AIScoreRepository _aiScoreRepository;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,8 +51,9 @@ void main() async {
   Hive.registerAdapter(InstructionGuideAdapter());
   Hive.registerAdapter(AIScoreCacheAdapter());
 
-  // Open the offline cache for the latest AI preparedness score.
-  await Hive.openBox<AIScoreCache>(AIScoreCache.boxName);
+  // Initialize the offline cache for the latest AI preparedness score.
+  _aiScoreRepository = AIScoreRepository();
+  await _aiScoreRepository.initBox();
 
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
@@ -245,3 +248,6 @@ EvacuationCenterRepository getEvacuationCenterRepository() => _evacuationCenterR
 /// Global getter to access the InstructionGuideRepository from anywhere in the app.
 InstructionGuideRepository getInstructionGuideRepository() =>
     _instructionGuideRepository;
+
+/// Global getter to access the cached AI preparedness score repository.
+AIScoreRepository getAIScoreRepository() => _aiScoreRepository;
