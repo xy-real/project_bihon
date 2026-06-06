@@ -584,29 +584,27 @@ class _QuickStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
         borderRadius: BorderRadius.circular(DashboardDesign.radius),
-        onTap: onTap,
-        child: Ink(
-          decoration: BoxDecoration(
-            color: DashboardDesign.surface(context),
-            borderRadius: BorderRadius.circular(DashboardDesign.radius),
-            border: Border.all(color: DashboardDesign.outline(context)),
-            boxShadow: DashboardDesign.cardShadow(context),
-          ),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           child: SizedBox(
             height: 112,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 5,
-                  decoration: BoxDecoration(
-                    color: data.color,
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(DashboardDesign.radius),
-                    ),
+                ColoredBox(
+                  color: data.color,
+                  child: const SizedBox(
+                    width: 5,
                   ),
                 ),
                 Expanded(
