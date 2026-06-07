@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
+import 'package:project_bihon/features/alerts/data/services/alert_sync_service.dart';
 import 'package:project_bihon/features/alerts/domain/threat_classification.dart';
 import 'package:project_bihon/features/alerts/presentation/widgets/alert_card_factory.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
@@ -9,7 +10,7 @@ import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_ma
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/household/data/repositories/household_repository.dart';
 import 'package:project_bihon/main.dart'
-    show getAlertsRepository, getHouseholdRepository;
+    show getAlertSyncService, getAlertsRepository, getHouseholdRepository;
 import 'package:project_bihon/shared/models/household.dart';
 
 /// Alerts list screen with location-specific threat classification.
@@ -49,13 +50,26 @@ class AlertsListPage extends StatefulWidget {
 
 class _AlertsListPageState extends State<AlertsListPage> {
   late final AlertsRepository _alertsRepository;
+  late final AlertSyncService _alertSyncService;
   late final HouseholdRepository _householdRepository;
 
   @override
   void initState() {
     super.initState();
     _alertsRepository = getAlertsRepository();
+    _alertSyncService = getAlertSyncService();
     _householdRepository = getHouseholdRepository();
+  }
+
+  Future<void> _refreshAlerts() async {
+    final succeeded = await _alertSyncService.syncAlerts();
+    if (!succeeded && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to refresh. Showing cached alerts.'),
+        ),
+      );
+    }
   }
 
   /// Handle "More Details" tap on an alert card.
@@ -235,56 +249,55 @@ class _AlertsListPageState extends State<AlertsListPage> {
               onDestinationSelected: _openTab,
             )
           : null,
-      body: ValueListenableBuilder<Box<CachedAlert>>(
-        valueListenable: _alertsRepository.getAlertsListenable(),
-        builder: (context, alertsBox, _) {
-          // Task A: Read household from Hive (local only, no network)
-          final household = _householdRepository.getHousehold();
-          final riskClassification = _getRiskClassification(household);
+      body: RefreshIndicator(
+        onRefresh: _refreshAlerts,
+        child: ValueListenableBuilder<Box<CachedAlert>>(
+          valueListenable: _alertsRepository.getAlertsListenable(),
+          builder: (context, alertsBox, _) {
+            // Task A: Read household from Hive (local only, no network)
+            final household = _householdRepository.getHousehold();
+            final riskClassification = _getRiskClassification(household);
 
-          // Task A: Read alerts from Hive (local only, no network)
-          final alerts = _alertsRepository.getActiveAlerts();
+            // Task A: Read alerts from Hive (local only, no network)
+            final alerts = _alertsRepository.getActiveAlerts();
 
-          // Task B: Apply resilience:
-          // - Household is null (handled by _getRiskClassification → 'unknown')
-          // - risk_classification is empty or 'unknown' (handled by _getRiskClassification)
-          // - alert.riskTags can be null/empty (sortAlerts/classifyThreat handle it)
-          // - alerts list is empty (handled by empty state widget above)
-          // → No crash paths; all cases render safely
+            // Task B: Apply resilience:
+            // - Household is null (handled by _getRiskClassification → 'unknown')
+            // - risk_classification is empty or 'unknown'
+            // - alert.riskTags can be null/empty
+            // - alerts list can be empty
+            // → No crash paths; all cases render safely
 
-          // Task C: No network dependency in render path (verified below)
-          // - _alertsRepository.getActiveAlerts() → pure Hive read
-          // - _householdRepository.getHousehold() → pure Hive read
-          // - sortAlerts() → pure function, no side effects
-          // - classifyThreat() → pure function, no side effects
-          // - buildAlertCard() → pure widget, no network calls
-          // → Fully functional in airplane mode
+            // Task C: The render path remains local-only. Supabase sync runs
+            // only from startup or the explicit pull-to-refresh callback.
 
-          return SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                DashboardDesign.gap,
-                horizontalPadding,
-                widget.showBottomNavigation ? 96 : 24,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: DashboardDesign.gap),
-                      _buildAlertsList(alerts, riskClassification),
-                    ],
+            return SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  DashboardDesign.gap,
+                  horizontalPadding,
+                  widget.showBottomNavigation ? 96 : 24,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildHeader(),
+                        const SizedBox(height: DashboardDesign.gap),
+                        _buildAlertsList(alerts, riskClassification),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -9,6 +9,7 @@ import 'features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
 import 'features/alerts/data/models/alert_sync_state.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
+import 'features/alerts/data/services/alert_sync_service.dart';
 import 'features/dashboard/presentation/pages/main_tab_shell.dart';
 import 'features/evacuation_centers/data/models/cached_evac_center.dart';
 import 'features/evacuation_centers/data/repositories/evacuation_center_repository.dart';
@@ -34,6 +35,7 @@ late SupplyRepository _supplyRepository;
 late ContactRepository _contactRepository;
 late HouseholdRepository _householdRepository;
 late AlertsRepository _alertsRepository;
+late AlertSyncService _alertSyncService;
 late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
 late InstructionGuideRepository _instructionGuideRepository;
@@ -94,6 +96,9 @@ void main() async {
     url: 'https://jlzxptmwxqfdpmwchnex.supabase.co',
     anonKey: 'sb_publishable_qSuKMyniP2rYkpkEogCMfg_Nvvi6rD7',
   );
+
+  _alertSyncService = AlertSyncService();
+  await _alertSyncService.syncAlerts();
 
   // Initialize EvacuationCenterRepository
   _evacuationCenterRepository = EvacuationCenterRepository();
@@ -264,6 +269,9 @@ HouseholdRepository getHouseholdRepository() => _householdRepository;
 
 /// Global getter to access the AlertsRepository from anywhere in the app.
 AlertsRepository getAlertsRepository() => _alertsRepository;
+
+/// Global getter for alert synchronization into the local Hive cache.
+AlertSyncService getAlertSyncService() => _alertSyncService;
 
 /// Global getter to access the EvacuationCenterRepository from anywhere in the app.
 EvacuationCenterRepository getEvacuationCenterRepository() => _evacuationCenterRepository;
