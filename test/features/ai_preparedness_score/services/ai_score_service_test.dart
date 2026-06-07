@@ -75,6 +75,35 @@ void main() {
     expect(generator.lastPrompt, contains('6x Bottled Water (Water)'));
   });
 
+  test('loads newly added supplies when recalculation starts', () async {
+    final service = buildService();
+    supplyRepository.items.add(
+      SupplyItem(
+        id: 'first-aid',
+        name: 'First Aid Kit',
+        category: 'Medical',
+        quantity: 2,
+        expirationDate: DateTime.utc(2027),
+      ),
+    );
+    supplyRepository.items.add(
+      SupplyItem(
+        id: 'expired-food',
+        name: 'Expired Food',
+        category: 'Food',
+        quantity: 4,
+        expirationDate: DateTime.utc(2020),
+      ),
+    );
+
+    final result = await service.recalculate();
+
+    expect(result.isSuccess, isTrue);
+    expect(generator.lastPrompt, contains('2x First Aid Kit (Medical)'));
+    expect(generator.lastPrompt, isNot(contains('Expired Food')));
+    expect(scoreRepository.saveCalls, 1);
+  });
+
   test('rejects invalid JSON without replacing a cached score', () async {
     final cached = _cachedScore();
     scoreRepository.savedScore = cached;
@@ -195,6 +224,21 @@ void main() {
     expect(result.status, AIScoreCalculationStatus.failed);
     expect(result.score, same(cached));
     expect(scoreRepository.savedScore, same(cached));
+    expect(scoreRepository.saveCalls, 0);
+  });
+
+  test('invalid API key returns a clear controlled error', () async {
+    generator.error = StateError(
+      'API key not valid. Please pass a valid API key.',
+    );
+
+    final result = await buildService().recalculate();
+
+    expect(result.status, AIScoreCalculationStatus.failed);
+    expect(
+      result.message,
+      contains('The Gemini API key is invalid.'),
+    );
     expect(scoreRepository.saveCalls, 0);
   });
 }

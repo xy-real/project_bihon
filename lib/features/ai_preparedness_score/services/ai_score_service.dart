@@ -63,13 +63,12 @@ class AIScoreCalculationResult {
 
   factory AIScoreCalculationResult.failed({
     required AIScoreCache? cachedScore,
+    String message = 'Unable to refresh the preparedness score right now.',
   }) {
     return AIScoreCalculationResult._(
       status: AIScoreCalculationStatus.failed,
       score: cachedScore,
-      message:
-          'Unable to refresh the preparedness score right now.'
-          '${_cachedScoreMessage(cachedScore)}',
+      message: '$message${_cachedScoreMessage(cachedScore)}',
     );
   }
 }
@@ -156,6 +155,13 @@ class AIScoreService {
 
   Future<AIScoreCalculationResult> recalculate() async {
     final cachedScore = _scoreRepository.getLatestScore();
+    final hasApiConfiguration =
+        _generator != null || _apiKey.trim().isNotEmpty;
+
+    debugPrint('[AIScoreService] Recalculation started.');
+    debugPrint(
+      '[AIScoreService] Gemini API key configured: $hasApiConfiguration.',
+    );
 
     bool isOnline;
     try {
@@ -166,10 +172,12 @@ class AIScoreService {
     }
 
     if (!isOnline) {
+      debugPrint('[AIScoreService] Offline; recalculation blocked.');
       return AIScoreCalculationResult.offline(cachedScore: cachedScore);
     }
 
-    if (_generator == null && _apiKey.trim().isEmpty) {
+    if (!hasApiConfiguration) {
+      debugPrint('[AIScoreService] Missing Gemini API configuration.');
       return AIScoreCalculationResult.configurationError(
         cachedScore: cachedScore,
       );
@@ -178,6 +186,21 @@ class AIScoreService {
     try {
       final household = await _householdRepository.getOrCreateHousehold();
       final supplies = _supplyRepository.getItemsForHousehold(household.id);
+      final validSupplies =
+          supplies.where((item) => !item.isExpired).toList(growable: false);
+      final categories = validSupplies
+          .map((item) => item.category.trim())
+          .where((category) => category.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+      debugPrint(
+        '[AIScoreService] Loaded ${supplies.length} supplies; '
+        '${validSupplies.length} unexpired included. '
+        'Risk: ${household.risk_classification}. '
+        'Categories: ${categories.join(', ')}.',
+      );
+
       final prompt = buildSanitizedPrompt(household, supplies);
       final generator = _generator ??
           GeminiAIScoreGenerator(
@@ -185,6 +208,7 @@ class AIScoreService {
             modelName: _modelName,
           );
       final responseText = await generator.generate(prompt);
+      debugPrint('[AIScoreService] Gemini response received.');
 
       if (responseText == null || responseText.trim().isEmpty) {
         throw const FormatException('Gemini returned an empty response.');
@@ -195,13 +219,24 @@ class AIScoreService {
         calculatedAt: _now().toUtc(),
       );
       await _scoreRepository.saveScore(score);
+      debugPrint(
+        '[AIScoreService] Score ${score.overallScore} saved to '
+        '${AIScoreCache.boxName}/${AIScoreCache.latestScoreKey}.',
+      );
       return AIScoreCalculationResult.success(score);
     } on FormatException catch (error) {
       debugPrint('[AIScoreService] Invalid Gemini response: $error');
-      return AIScoreCalculationResult.failed(cachedScore: cachedScore);
+      return AIScoreCalculationResult.failed(
+        cachedScore: cachedScore,
+        message:
+            'Gemini returned an invalid score response. Please try again.',
+      );
     } on Object catch (error) {
       debugPrint('[AIScoreService] Recalculation failed: $error');
-      return AIScoreCalculationResult.failed(cachedScore: cachedScore);
+      return AIScoreCalculationResult.failed(
+        cachedScore: cachedScore,
+        message: _geminiFailureMessage(error),
+      );
     }
   }
 
@@ -281,4 +316,22 @@ String _cachedScoreMessage(AIScoreCache? cachedScore) {
   final cachedDate =
       cachedScore.calculatedAt.toLocal().toIso8601String().split('T').first;
   return ' Showing your cached score from $cachedDate.';
+}
+
+String _geminiFailureMessage(Object error) {
+  final normalized = error.toString().toLowerCase();
+  if (normalized.contains('api key not valid') ||
+      normalized.contains('invalid api key')) {
+    return 'The Gemini API key is invalid. Generate a new key, restart the app with GEMINI_API_KEY, and try again.';
+  }
+  if (normalized.contains('quota') ||
+      normalized.contains('resource exhausted')) {
+    return 'The Gemini API quota has been reached. Check the project quota and try again later.';
+  }
+  if (normalized.contains('model') &&
+      (normalized.contains('not found') ||
+          normalized.contains('not supported'))) {
+    return 'The configured Gemini model is unavailable. Check GEMINI_MODEL and try again.';
+  }
+  return 'Gemini could not calculate a score. Check the API key, model access, and quota, then try again.';
 }

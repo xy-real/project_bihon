@@ -48,6 +48,8 @@ $inventorySummary
 Analyze this inventory against standard 3-day survival requirements for this household size and risk profile.
 
 Respond strictly in JSON format with this structure and no additional text:
+The values below are placeholders. Replace every value with your analysis;
+do not copy the placeholder score or advice.
 {
   "score": 0,
   "status": "Needs Improvement",

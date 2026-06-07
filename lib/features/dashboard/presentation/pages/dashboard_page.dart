@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:project_bihon/features/ai_preparedness_score/data/repositories/ai_score_repository.dart';
 import 'package:project_bihon/features/ai_preparedness_score/models/ai_score_cache.dart';
 import 'package:project_bihon/features/ai_preparedness_score/services/ai_score_service.dart';
+import 'package:project_bihon/features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
@@ -17,6 +18,7 @@ import 'package:project_bihon/features/preparedness_instruction/repositories/ins
 import 'package:project_bihon/features/preparedness_instruction/ui/category_grid.dart';
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
 import 'package:project_bihon/features/supply_tracker/data/repositories/supply_repository.dart';
+import 'package:project_bihon/shared/widgets/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -228,6 +230,9 @@ class DashboardPage extends StatelessWidget {
       onRecalculate: onRecalculateScore ?? aiScoreService?.recalculate,
       onImproveNow: () {
         _open(context, PreparednessCategoryGridPage.routeName);
+      },
+      onViewAdvice: () {
+        _open(context, AIScoreDetailScreen.routeName);
       },
     );
   }
@@ -441,6 +446,11 @@ class DashboardPage extends StatelessWidget {
     return ValueListenableBuilder<Box<AIScoreCache>>(
       valueListenable: aiScoreRepository!.getListenable(),
       builder: (context, scoreBox, _) {
+        final cachedScore = scoreBox.get(AIScoreCache.latestScoreKey);
+        debugPrint(
+          '[Dashboard] AI score cache listener: '
+          '${cachedScore?.overallScore ?? 'empty'}.',
+        );
         return ValueListenableBuilder<Box<SupplyItem>>(
           valueListenable: supplyRepository!.getItemsListenable(),
           builder: (context, suppliesBox, _) {
@@ -460,7 +470,7 @@ class DashboardPage extends StatelessWidget {
                           alerts: alertsBox.values.toList(),
                           contacts: contactsBox.values.toList(),
                           centers: centersBox.values.toList(),
-                          score: scoreBox.get(AIScoreCache.latestScoreKey),
+                          score: cachedScore,
                         );
                       },
                     );
@@ -498,6 +508,7 @@ class _PreparednessScoreCard extends StatefulWidget {
     required this.contactCount,
     required this.onRecalculate,
     required this.onImproveNow,
+    required this.onViewAdvice,
   });
 
   final AIScoreCache? score;
@@ -505,6 +516,7 @@ class _PreparednessScoreCard extends StatefulWidget {
   final int contactCount;
   final Future<AIScoreCalculationResult> Function()? onRecalculate;
   final VoidCallback onImproveNow;
+  final VoidCallback onViewAdvice;
 
   @override
   State<_PreparednessScoreCard> createState() =>
@@ -532,8 +544,11 @@ class _PreparednessScoreCardState extends State<_PreparednessScoreCard> {
     setState(() {
       _isRecalculating = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.message)),
+    AppToast.show(
+      context,
+      title: result.isSuccess ? 'Score updated' : 'Unable to calculate score',
+      message: result.message,
+      destructive: !result.isSuccess,
     );
   }
 
@@ -632,6 +647,14 @@ class _PreparednessScoreCardState extends State<_PreparednessScoreCard> {
                   backgroundColor: DashboardDesign.deepNavy,
                   foregroundColor: Colors.white,
                 ),
+              ),
+              TextButton(
+                onPressed: widget.onViewAdvice,
+                style: TextButton.styleFrom(
+                  foregroundColor: DashboardDesign.deepNavy,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                child: const Text('View Advice'),
               ),
               TextButton(
                 onPressed: widget.onImproveNow,

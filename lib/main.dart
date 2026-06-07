@@ -5,6 +5,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'features/ai_preparedness_score/data/repositories/ai_score_repository.dart';
 import 'features/ai_preparedness_score/models/ai_score_cache.dart';
 import 'features/ai_preparedness_score/services/ai_score_service.dart';
+import 'features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/dashboard/presentation/pages/main_tab_shell.dart';
@@ -203,6 +204,15 @@ class _MyAppState extends State<MyApp> {
             settings: settings,
             builder: (context) => ProfileSettingsPage(
               householdRepository: _householdRepository,
+            ),
+          );
+        }
+        if (settings.name == AIScoreDetailScreen.routeName) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => AIScoreDetailScreen(
+              repository: _aiScoreRepository,
+              service: _aiScoreService,
             ),
           );
         }

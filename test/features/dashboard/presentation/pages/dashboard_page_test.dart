@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project_bihon/features/ai_preparedness_score/models/ai_score_cache.dart';
 import 'package:project_bihon/features/ai_preparedness_score/services/ai_score_service.dart';
+import 'package:project_bihon/features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:project_bihon/features/emergency_contacts/data/models/contact.dart';
@@ -79,6 +80,8 @@ void main() {
       '/supplies': (_) => const Scaffold(body: Text('Supplies Route')),
       '/contacts': (_) => const Scaffold(body: Text('Contacts Route')),
       '/safety-status': (_) => const Scaffold(body: Text('Safety Route')),
+      AIScoreDetailScreen.routeName: (_) =>
+          const Scaffold(body: Text('Advice Route')),
       PreparednessCategoryGridPage.routeName: (_) =>
           const Scaffold(body: Text('Guides Route')),
     };
@@ -139,6 +142,7 @@ void main() {
       '1 evac centers': 'Evacuation Route',
       '1 supplies expiring': 'Supplies Route',
       'Improve Now ->': 'Guides Route',
+      'View Advice': 'Advice Route',
       'View All': 'Contacts Route',
       'Send Safety Status': 'Safety Route',
       'Call Emergency': 'Contacts Route',
@@ -209,7 +213,7 @@ void main() {
 
     expect(recalculationCount, 1);
     expect(
-      find.text(
+      find.textContaining(
         'No internet connection. Showing your cached score from 2026-06-07.',
       ),
       findsOneWidget,

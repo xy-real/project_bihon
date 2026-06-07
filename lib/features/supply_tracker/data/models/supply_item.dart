@@ -37,7 +37,30 @@ class SupplyItem extends HiveObject {
     this.householdId = defaultHouseholdId,
   });
 
-  // Helper getters to cleanly check expiration status in the UI
-  bool get isExpired => DateTime.now().isAfter(expirationDate);
-  bool get expiresSoon => expirationDate.difference(DateTime.now()).inDays <= 7;
+  // Expiration dates are calendar dates, so an item remains valid all day.
+  bool get isExpired {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expirationDay = DateTime(
+      expirationDate.year,
+      expirationDate.month,
+      expirationDate.day,
+    );
+    return expirationDay.isBefore(today);
+  }
+
+  bool get expiresSoon {
+    if (isExpired) {
+      return false;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expirationDay = DateTime(
+      expirationDate.year,
+      expirationDate.month,
+      expirationDate.day,
+    );
+    return expirationDay.difference(today).inDays <= 7;
+  }
 }
