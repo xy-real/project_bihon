@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:project_bihon/features/ai_preparedness_score/data/repositories/ai_score_repository.dart';
+import 'package:project_bihon/features/ai_preparedness_score/services/ai_score_service.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
 import 'package:project_bihon/features/alerts/presentation/pages/alerts_list_page.dart';
 import 'package:project_bihon/features/dashboard/presentation/pages/dashboard_page.dart';
@@ -26,6 +28,8 @@ class MainTabShell extends StatefulWidget {
     required this.householdRepository,
     required this.evacuationCenterRepository,
     required this.instructionGuideRepository,
+    required this.aiScoreRepository,
+    required this.aiScoreService,
   });
 
   final int initialIndex;
@@ -37,6 +41,8 @@ class MainTabShell extends StatefulWidget {
   final HouseholdRepository householdRepository;
   final EvacuationCenterRepository evacuationCenterRepository;
   final InstructionGuideRepository instructionGuideRepository;
+  final AIScoreRepository aiScoreRepository;
+  final AIScoreService aiScoreService;
 
   @override
   State<MainTabShell> createState() => _MainTabShellState();
@@ -167,6 +173,8 @@ class _MainTabShellState extends State<MainTabShell> {
         householdRepository: widget.householdRepository,
         evacuationCenterRepository: widget.evacuationCenterRepository,
         instructionGuideRepository: widget.instructionGuideRepository,
+        aiScoreRepository: widget.aiScoreRepository,
+        aiScoreService: widget.aiScoreService,
         onOpenMainTab: _goToTab,
       ),
     );

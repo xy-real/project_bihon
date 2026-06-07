@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:project_bihon/features/ai_preparedness_score/data/repositories/ai_score_repository.dart';
+import 'package:project_bihon/features/ai_preparedness_score/models/ai_score_cache.dart';
+import 'package:project_bihon/features/ai_preparedness_score/services/ai_score_service.dart';
+import 'package:project_bihon/features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
@@ -14,6 +18,7 @@ import 'package:project_bihon/features/preparedness_instruction/repositories/ins
 import 'package:project_bihon/features/preparedness_instruction/ui/category_grid.dart';
 import 'package:project_bihon/features/supply_tracker/data/models/supply_item.dart';
 import 'package:project_bihon/features/supply_tracker/data/repositories/supply_repository.dart';
+import 'package:project_bihon/shared/widgets/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -25,21 +30,26 @@ class DashboardPage extends StatelessWidget {
     required this.householdRepository,
     required this.evacuationCenterRepository,
     required this.instructionGuideRepository,
+    required this.aiScoreRepository,
+    required this.aiScoreService,
     this.onOpenMainTab,
-  }) : snapshot = null;
+  })  : snapshot = null,
+        onRecalculateScore = null;
 
   const DashboardPage.fromSnapshot({
     super.key,
     required DashboardSnapshot this.snapshot,
+    this.onRecalculateScore,
     this.onOpenMainTab,
   })  : supplyRepository = null,
         alertsRepository = null,
         contactRepository = null,
         householdRepository = null,
         evacuationCenterRepository = null,
-        instructionGuideRepository = null;
+        instructionGuideRepository = null,
+        aiScoreRepository = null,
+        aiScoreService = null;
 
-  static const int _preparednessScore = 65;
   static const int _essentialSupplyTarget = 12;
 
   final SupplyRepository? supplyRepository;
@@ -48,7 +58,10 @@ class DashboardPage extends StatelessWidget {
   final HouseholdRepository? householdRepository;
   final EvacuationCenterRepository? evacuationCenterRepository;
   final InstructionGuideRepository? instructionGuideRepository;
+  final AIScoreRepository? aiScoreRepository;
+  final AIScoreService? aiScoreService;
   final DashboardSnapshot? snapshot;
+  final Future<AIScoreCalculationResult> Function()? onRecalculateScore;
   final ValueChanged<int>? onOpenMainTab;
 
   void _open(BuildContext context, String routeName) {
@@ -206,73 +219,21 @@ class DashboardPage extends StatelessWidget {
     BuildContext context,
     List<SupplyItem> supplies,
     List<Contact> contacts,
+    AIScoreCache? score,
   ) {
     final trackedSupplyCount = supplies.length.clamp(0, _essentialSupplyTarget);
 
-    return _DashboardCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Your Preparedness Score',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Stay ready for any situation.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: DashboardDesign.mutedText(context),
-                ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            '$_preparednessScore%',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: DashboardDesign.deepNavy,
-                ),
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: _preparednessScore / 100,
-              minHeight: 10,
-              backgroundColor: DashboardDesign.surfaceVariant(context),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                DashboardDesign.deepNavy,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          _SummaryRow(
-            icon: LucideIcons.packageCheck,
-            text: '$trackedSupplyCount of $_essentialSupplyTarget essential supplies',
-          ),
-          const SizedBox(height: 10),
-          _SummaryRow(
-            icon: LucideIcons.users,
-            text:
-                '${contacts.length} family ${contacts.length == 1 ? 'contact' : 'contacts'} added',
-          ),
-          const SizedBox(height: 18),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => _open(context, PreparednessCategoryGridPage.routeName),
-              style: TextButton.styleFrom(
-                foregroundColor: DashboardDesign.deepNavy,
-                textStyle: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              child: const Text('Improve Now ->'),
-            ),
-          ),
-        ],
-      ),
+    return _PreparednessScoreCard(
+      score: score,
+      trackedSupplyCount: trackedSupplyCount,
+      contactCount: contacts.length,
+      onRecalculate: onRecalculateScore ?? aiScoreService?.recalculate,
+      onImproveNow: () {
+        _open(context, PreparednessCategoryGridPage.routeName);
+      },
+      onViewAdvice: () {
+        _open(context, AIScoreDetailScreen.routeName);
+      },
     );
   }
 
@@ -422,6 +383,7 @@ class DashboardPage extends StatelessWidget {
     required List<CachedAlert> alerts,
     required List<CachedEvacCenter> centers,
     required List<Contact> contacts,
+    required AIScoreCache? score,
   }) {
     final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
         ? DashboardDesign.marginTablet
@@ -444,7 +406,12 @@ class DashboardPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildPreparednessScoreCard(context, supplies, contacts),
+                  _buildPreparednessScoreCard(
+                    context,
+                    supplies,
+                    contacts,
+                    score,
+                  ),
                   const SizedBox(height: DashboardDesign.gap),
                   _buildStatusCards(context, alerts, centers, supplies),
                   const SizedBox(height: DashboardDesign.gap),
@@ -471,28 +438,41 @@ class DashboardPage extends StatelessWidget {
           alerts: snapshot.alerts,
           contacts: snapshot.contacts,
           centers: snapshot.centers,
+          score: snapshot.aiScore,
         ),
       );
     }
 
-    return ValueListenableBuilder<Box<SupplyItem>>(
-      valueListenable: supplyRepository!.getItemsListenable(),
-      builder: (context, suppliesBox, _) {
-        return ValueListenableBuilder<Box<CachedAlert>>(
-          valueListenable: alertsRepository!.getAlertsListenable(),
-          builder: (context, alertsBox, _) {
-            return ValueListenableBuilder<Box<Contact>>(
-              valueListenable: contactRepository!.getContactsListenable(),
-              builder: (context, contactsBox, _) {
-                return ValueListenableBuilder<Box<CachedEvacCenter>>(
-                  valueListenable: evacuationCenterRepository!.getListenable(),
-                  builder: (context, centersBox, _) {
-                    return _buildDashboard(
-                      context: context,
-                      supplies: suppliesBox.values.toList(),
-                      alerts: alertsBox.values.toList(),
-                      contacts: contactsBox.values.toList(),
-                      centers: centersBox.values.toList(),
+    return ValueListenableBuilder<Box<AIScoreCache>>(
+      valueListenable: aiScoreRepository!.getListenable(),
+      builder: (context, scoreBox, _) {
+        final cachedScore = scoreBox.get(AIScoreCache.latestScoreKey);
+        debugPrint(
+          '[Dashboard] AI score cache listener: '
+          '${cachedScore?.overallScore ?? 'empty'}.',
+        );
+        return ValueListenableBuilder<Box<SupplyItem>>(
+          valueListenable: supplyRepository!.getItemsListenable(),
+          builder: (context, suppliesBox, _) {
+            return ValueListenableBuilder<Box<CachedAlert>>(
+              valueListenable: alertsRepository!.getAlertsListenable(),
+              builder: (context, alertsBox, _) {
+                return ValueListenableBuilder<Box<Contact>>(
+                  valueListenable: contactRepository!.getContactsListenable(),
+                  builder: (context, contactsBox, _) {
+                    return ValueListenableBuilder<Box<CachedEvacCenter>>(
+                      valueListenable:
+                          evacuationCenterRepository!.getListenable(),
+                      builder: (context, centersBox, _) {
+                        return _buildDashboard(
+                          context: context,
+                          supplies: suppliesBox.values.toList(),
+                          alerts: alertsBox.values.toList(),
+                          contacts: contactsBox.values.toList(),
+                          centers: centersBox.values.toList(),
+                          score: cachedScore,
+                        );
+                      },
                     );
                   },
                 );
@@ -511,12 +491,185 @@ class DashboardSnapshot {
     this.alerts = const [],
     this.contacts = const [],
     this.centers = const [],
+    this.aiScore,
   });
 
   final List<SupplyItem> supplies;
   final List<CachedAlert> alerts;
   final List<Contact> contacts;
   final List<CachedEvacCenter> centers;
+  final AIScoreCache? aiScore;
+}
+
+class _PreparednessScoreCard extends StatefulWidget {
+  const _PreparednessScoreCard({
+    required this.score,
+    required this.trackedSupplyCount,
+    required this.contactCount,
+    required this.onRecalculate,
+    required this.onImproveNow,
+    required this.onViewAdvice,
+  });
+
+  final AIScoreCache? score;
+  final int trackedSupplyCount;
+  final int contactCount;
+  final Future<AIScoreCalculationResult> Function()? onRecalculate;
+  final VoidCallback onImproveNow;
+  final VoidCallback onViewAdvice;
+
+  @override
+  State<_PreparednessScoreCard> createState() =>
+      _PreparednessScoreCardState();
+}
+
+class _PreparednessScoreCardState extends State<_PreparednessScoreCard> {
+  bool _isRecalculating = false;
+
+  Future<void> _recalculate() async {
+    final onRecalculate = widget.onRecalculate;
+    if (_isRecalculating || onRecalculate == null) {
+      return;
+    }
+
+    setState(() {
+      _isRecalculating = true;
+    });
+
+    final result = await onRecalculate();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isRecalculating = false;
+    });
+    AppToast.show(
+      context,
+      title: result.isSuccess ? 'Score updated' : 'Unable to calculate score',
+      message: result.message,
+      destructive: !result.isSuccess,
+    );
+  }
+
+  String _updatedLabel(DateTime calculatedAt) {
+    final local = calculatedAt.toLocal();
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    return 'Last updated ${local.year}-$month-$day';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final score = widget.score;
+    final scoreValue = score?.overallScore;
+
+    return _DashboardCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your Preparedness Score',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            score?.status ?? 'Calculate your preparedness score',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            scoreValue == null ? '--' : '$scoreValue%',
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: DashboardDesign.deepNavy,
+                ),
+          ),
+          if (score != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              _updatedLabel(score.calculatedAt),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: DashboardDesign.mutedText(context),
+                  ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: scoreValue == null ? 0 : scoreValue / 100,
+              minHeight: 10,
+              backgroundColor: DashboardDesign.surfaceVariant(context),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                DashboardDesign.deepNavy,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _SummaryRow(
+            icon: LucideIcons.packageCheck,
+            text:
+                '${widget.trackedSupplyCount} of ${DashboardPage._essentialSupplyTarget} essential supplies',
+          ),
+          const SizedBox(height: 10),
+          _SummaryRow(
+            icon: LucideIcons.users,
+            text:
+                '${widget.contactCount} family ${widget.contactCount == 1 ? 'contact' : 'contacts'} added',
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: _isRecalculating || widget.onRecalculate == null
+                    ? null
+                    : _recalculate,
+                icon: _isRecalculating
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_outlined),
+                label: Text(
+                  _isRecalculating ? 'Calculating...' : 'Recalculate',
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: DashboardDesign.deepNavy,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              TextButton(
+                onPressed: widget.onViewAdvice,
+                style: TextButton.styleFrom(
+                  foregroundColor: DashboardDesign.deepNavy,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                child: const Text('View Advice'),
+              ),
+              TextButton(
+                onPressed: widget.onImproveNow,
+                style: TextButton.styleFrom(
+                  foregroundColor: DashboardDesign.deepNavy,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                child: const Text('Improve Now ->'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _DashboardCard extends StatelessWidget {

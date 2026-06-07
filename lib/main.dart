@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'features/ai_preparedness_score/data/repositories/ai_score_repository.dart';
+import 'features/ai_preparedness_score/models/ai_score_cache.dart';
+import 'features/ai_preparedness_score/services/ai_score_service.dart';
+import 'features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/dashboard/presentation/pages/main_tab_shell.dart';
@@ -32,6 +36,8 @@ late AlertsRepository _alertsRepository;
 late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
 late InstructionGuideRepository _instructionGuideRepository;
+late AIScoreRepository _aiScoreRepository;
+late AIScoreService _aiScoreService;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +52,11 @@ void main() async {
   Hive.registerAdapter(CachedAlertAdapter());
   Hive.registerAdapter(CachedEvacCenterAdapter());
   Hive.registerAdapter(InstructionGuideAdapter());
+  Hive.registerAdapter(AIScoreCacheAdapter());
+
+  // Initialize the offline cache for the latest AI preparedness score.
+  _aiScoreRepository = AIScoreRepository();
+  await _aiScoreRepository.initBox();
 
   // Initialize SupplyRepository
   _supplyRepository = SupplyRepository();
@@ -59,6 +70,12 @@ void main() async {
   // Initialize HouseholdRepository
   _householdRepository = HouseholdRepository();
   await _householdRepository.initBox();
+
+  _aiScoreService = AIScoreService(
+    householdRepository: _householdRepository,
+    supplyRepository: _supplyRepository,
+    scoreRepository: _aiScoreRepository,
+  );
 
   // Initialize AlertsRepository
   _alertsRepository = AlertsRepository();
@@ -151,6 +168,8 @@ class _MyAppState extends State<MyApp> {
                   householdRepository: _householdRepository,
                   evacuationCenterRepository: _evacuationCenterRepository,
                   instructionGuideRepository: _instructionGuideRepository,
+                  aiScoreRepository: _aiScoreRepository,
+                  aiScoreService: _aiScoreService,
                 ),
               );
             },
@@ -185,6 +204,15 @@ class _MyAppState extends State<MyApp> {
             settings: settings,
             builder: (context) => ProfileSettingsPage(
               householdRepository: _householdRepository,
+            ),
+          );
+        }
+        if (settings.name == AIScoreDetailScreen.routeName) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => AIScoreDetailScreen(
+              repository: _aiScoreRepository,
+              service: _aiScoreService,
             ),
           );
         }
@@ -240,3 +268,9 @@ EvacuationCenterRepository getEvacuationCenterRepository() => _evacuationCenterR
 /// Global getter to access the InstructionGuideRepository from anywhere in the app.
 InstructionGuideRepository getInstructionGuideRepository() =>
     _instructionGuideRepository;
+
+/// Global getter to access the cached AI preparedness score repository.
+AIScoreRepository getAIScoreRepository() => _aiScoreRepository;
+
+/// Global getter for user-triggered AI preparedness score recalculation.
+AIScoreService getAIScoreService() => _aiScoreService;
