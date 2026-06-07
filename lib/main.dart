@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -98,7 +100,7 @@ void main() async {
   );
 
   _alertSyncService = AlertSyncService();
-  await _alertSyncService.syncAlerts();
+  unawaited(_alertSyncService.syncAlerts());
 
   // Initialize EvacuationCenterRepository
   _evacuationCenterRepository = EvacuationCenterRepository();
@@ -172,6 +174,7 @@ class _MyAppState extends State<MyApp> {
                   onThemeChanged: _onThemeChanged,
                   supplyRepository: _supplyRepository,
                   alertsRepository: _alertsRepository,
+                  alertSyncService: _alertSyncService,
                   contactRepository: _contactRepository,
                   householdRepository: _householdRepository,
                   evacuationCenterRepository: _evacuationCenterRepository,
