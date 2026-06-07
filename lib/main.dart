@@ -6,6 +6,7 @@ import 'features/ai_preparedness_score/data/repositories/ai_score_repository.dar
 import 'features/ai_preparedness_score/models/ai_score_cache.dart';
 import 'features/ai_preparedness_score/services/ai_score_service.dart';
 import 'features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
+import 'features/alerts/data/models/alert_sync_state.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
 import 'features/dashboard/presentation/pages/main_tab_shell.dart';
@@ -50,6 +51,7 @@ void main() async {
   Hive.registerAdapter(ContactAdapter());
   Hive.registerAdapter(HouseholdAdapter());
   Hive.registerAdapter(CachedAlertAdapter());
+  Hive.registerAdapter(AlertSyncStateAdapter());
   Hive.registerAdapter(CachedEvacCenterAdapter());
   Hive.registerAdapter(InstructionGuideAdapter());
   Hive.registerAdapter(AIScoreCacheAdapter());
@@ -80,6 +82,7 @@ void main() async {
   // Initialize AlertsRepository
   _alertsRepository = AlertsRepository();
   await _alertsRepository.initBox();
+  await Hive.openBox<AlertSyncState>(AlertSyncState.boxName);
 
   // Initialize preparedness instruction guides
   _instructionGuideRepository = InstructionGuideRepository();
