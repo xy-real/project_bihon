@@ -94,6 +94,28 @@ void main() {
     expect(state?.lastSyncedCount, 1);
   });
 
+  test('normalizes comma-separated risk tags from a Supabase row', () {
+    expect(
+      AlertSyncService.normalizeRiskTags(
+        ' Flood Prone, flood-prone, Coastal Warning ',
+      ),
+      ['flood_prone', 'coastal_warning'],
+    );
+  });
+
+  test('normalizes JSON and Postgres-style affected areas values', () {
+    expect(
+      AlertSyncService.normalizeAffectedAreas(
+        '[" Baybay City ", "Leyte", "Baybay City"]',
+      ),
+      ['Baybay City', 'Leyte'],
+    );
+    expect(
+      AlertSyncService.normalizeAffectedAreas('{ Baybay City, Leyte }'),
+      ['Baybay City', 'Leyte'],
+    );
+  });
+
   test('skips corrupt rows while caching valid rows', () async {
     remoteRows = [
       validRow(),

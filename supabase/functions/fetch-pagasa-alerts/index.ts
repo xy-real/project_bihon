@@ -55,7 +55,7 @@ type NormalizedAlertRow = {
 
 type SupabaseAdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
-class PublicSourceFetchError extends Error {
+export class PublicSourceFetchError extends Error {
   constructor(message: string, readonly safeMessage: string) {
     super(message);
     this.name = 'PublicSourceFetchError';
@@ -66,7 +66,11 @@ const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
 };
 
-Deno.serve(async (request: Request): Promise<Response> => {
+if (import.meta.main) {
+  Deno.serve(handleRequest);
+}
+
+async function handleRequest(request: Request): Promise<Response> {
   try {
     if (request.method !== 'GET' && request.method !== 'POST') {
       return jsonResponse(
@@ -165,7 +169,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       500,
     );
   }
-});
+}
 
 async function fetchUpstreamAlerts(request: Request): Promise<FetchSourceResult> {
   // TODO(fetch-pagasa-alerts): Replace this public-page parser with an official
@@ -251,7 +255,7 @@ function createLocalFixtureAlerts(): RawAlertLike[] {
   ];
 }
 
-function createLocalHtmlFixture(): string {
+export function createLocalHtmlFixture(): string {
   return `
     <!doctype html>
     <html>
@@ -270,7 +274,7 @@ function createLocalHtmlFixture(): string {
   `;
 }
 
-async function fetchPublicSourceText(sourceUrl: string): Promise<string> {
+export async function fetchPublicSourceText(sourceUrl: string): Promise<string> {
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt += 1) {
@@ -322,7 +326,7 @@ async function fetchWithTimeout(
   }
 }
 
-async function parsePublicAlertPage(
+export async function parsePublicAlertPage(
   html: string,
   sourceUrl: string,
   now: Date,
@@ -357,7 +361,7 @@ async function parsePublicAlertPage(
   };
 }
 
-function htmlToReadableText(html: string): string {
+export function htmlToReadableText(html: string): string {
   return decodeHtmlEntities(html)
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -424,7 +428,7 @@ function extractPublishedDate(readableText: string, now: Date): string {
   return now.toISOString();
 }
 
-function inferAdvisoryType(text: string): string {
+export function inferAdvisoryType(text: string): string {
   const normalized = text.toLowerCase();
   if (/\bstorm surge\b/.test(normalized)) return 'storm_surge';
   if (/\btyphoon\b|\btropical cyclone\b|\bstorm warning\b/.test(normalized)) {
@@ -438,7 +442,7 @@ function inferAdvisoryType(text: string): string {
   return 'general';
 }
 
-function inferSeverity(text: string): string {
+export function inferSeverity(text: string): string {
   const normalized = text.toLowerCase();
   if (
     /\burgent\b|\bsevere\b|\bheavy rainfall\b|\btyphoon warning\b|\bstorm surge warning\b/
@@ -452,7 +456,7 @@ function inferSeverity(text: string): string {
   return 'low';
 }
 
-function inferRiskTags(text: string): string[] {
+export function inferRiskTags(text: string): string[] {
   const normalized = text.toLowerCase();
   const tags: string[] = [];
 
@@ -469,7 +473,7 @@ function inferRiskTags(text: string): string[] {
   return dedupeStrings(tags);
 }
 
-function inferAffectedAreas(text: string): string[] {
+export function inferAffectedAreas(text: string): string[] {
   const normalized = text.toLowerCase();
   const areas: string[] = [];
 
@@ -483,7 +487,7 @@ function inferAffectedAreas(text: string): string[] {
   return dedupeStrings(areas);
 }
 
-function isRelevantToBaybayArea(record: RawAlertLike): boolean {
+export function isRelevantToBaybayArea(record: RawAlertLike): boolean {
   const haystack = [
     record.title,
     record.content,
@@ -549,7 +553,7 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function normalizeAlertRecord(
+export async function normalizeAlertRecord(
   rawRecord: RawAlertLike,
   ingestedAt: string,
 ): Promise<NormalizedAlertRow> {
@@ -631,7 +635,7 @@ async function normalizeAlertId(
   return deterministicUuid(seed);
 }
 
-async function upsertAlertRows(
+export async function upsertAlertRows(
   supabaseAdmin: SupabaseAdminClient,
   rows: NormalizedAlertRow[],
 ): Promise<number> {
