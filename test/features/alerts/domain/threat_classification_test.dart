@@ -40,6 +40,18 @@ void main() {
       expect(result, equals(ThreatBand.general));
     });
 
+    test('returns general for unsupported urban household classification', () {
+      final alert = baseAlert.copyWith(riskTags: ['urban']);
+      final result = classifyThreat(alert, 'urban');
+      expect(result, equals(ThreatBand.general));
+    });
+
+    test('normalizes supported household classification before matching', () {
+      final alert = baseAlert.copyWith(riskTags: ['flood_prone']);
+      final result = classifyThreat(alert, ' Flood-Prone ');
+      expect(result, equals(ThreatBand.direct));
+    });
+
     test('returns direct if alert riskTags contains household classification', () {
       final alert = baseAlert.copyWith(riskTags: ['coastal', 'flood_prone']);
       final result = classifyThreat(alert, 'coastal');
@@ -148,6 +160,30 @@ void main() {
       expect(result[1].id, equals('general_1'));
     });
 
+    test('coastal household prioritizes coastal-tagged alert', () {
+      final alerts = [
+        createAlert('flood_general', 'high', ['flood_prone']),
+        createAlert('coastal_direct', 'low', ['coastal']),
+      ];
+      final result = sortAlerts(alerts, 'coastal');
+      expect(result.map((alert) => alert.id), [
+        'coastal_direct',
+        'flood_general',
+      ]);
+    });
+
+    test('flood_prone household prioritizes flood_prone-tagged alert', () {
+      final alerts = [
+        createAlert('coastal_general', 'high', ['coastal']),
+        createAlert('flood_direct', 'low', ['flood_prone']),
+      ];
+      final result = sortAlerts(alerts, 'flood_prone');
+      expect(result.map((alert) => alert.id), [
+        'flood_direct',
+        'coastal_general',
+      ]);
+    });
+
     test('within direct threats: high severity before medium', () {
       final alerts = [
         createAlert('direct_medium', 'medium', ['coastal']),
@@ -246,16 +282,13 @@ void main() {
       expect(result[1].id, equals('with_flood'));
     });
 
-    test('maintains stability for identical alerts', () {
+    test('preserves input order for identical sorting keys', () {
       final baseAlerts = [
         createAlert('alert_a', 'high', ['coastal'], publishedAt: baseTime),
         createAlert('alert_b', 'high', ['coastal'], publishedAt: baseTime),
       ];
       final result = sortAlerts(baseAlerts, 'coastal');
-      // Both have same severity and time, order should maintain relative position
-      expect(result.length, equals(2));
-      expect(result[0].severity, equals('high'));
-      expect(result[1].severity, equals('high'));
+      expect(result.map((alert) => alert.id), ['alert_a', 'alert_b']);
     });
 
     test('handles multiple risk tags correctly', () {

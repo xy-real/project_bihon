@@ -1,4 +1,11 @@
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
+import 'package:project_bihon/utils/risk_tag_utils.dart';
+
+const Set<String> _directRiskClassifications = {
+  'coastal',
+  'flood_prone',
+  'landslide_prone',
+};
 
 /// Categorizes alerts into threat bands based on household risk profile.
 enum ThreatBand {
@@ -11,47 +18,40 @@ enum ThreatBand {
   general,
 }
 
-/// Classifies whether an alert is a direct threat or general advisory for the household.
+/// Normalizes household risk values before matching them against alert tags.
 ///
-/// Logic:
-/// - If the household has no risk classification (empty or 'unknown'), treat all alerts as general.
-/// - If the alert's riskTags contains the household's risk_classification, it's a direct threat.
-/// - Otherwise, it's a general advisory.
-///
-/// Parameters:
-/// - [alert]: The alert to classify
-/// - [householdRiskClassification]: The household's canonical risk classification
-///   (e.g., 'coastal', 'flood_prone', 'landslide_prone', 'unknown')
-///
-/// Returns:
-/// - [ThreatBand.direct] if the alert's riskTags matches the household's classification
-/// - [ThreatBand.general] otherwise
+/// The current household model supports coastal, flood_prone,
+/// landslide_prone, and unknown. Unsupported values such as urban are mapped
+/// to unknown so they stay general advisories instead of creating accidental
+/// direct-threat matches.
+String normalizeHouseholdRiskClassification(String riskClassification) {
+  final normalized = normalizeRiskTag(riskClassification);
+  return _directRiskClassifications.contains(normalized)
+      ? normalized
+      : 'unknown';
+}
+
+/// Classifies whether an alert is a direct threat or general advisory.
 ThreatBand classifyThreat(
   CachedAlert alert,
   String householdRiskClassification,
 ) {
-  if (householdRiskClassification.isEmpty ||
-      householdRiskClassification == 'unknown') {
+  final normalizedHouseholdRisk =
+      normalizeHouseholdRiskClassification(householdRiskClassification);
+  if (normalizedHouseholdRisk == 'unknown') {
     return ThreatBand.general;
   }
-  final hasMatch = alert.riskTags.contains(householdRiskClassification);
+
+  final hasMatch = alert.riskTags.contains(normalizedHouseholdRisk);
   return hasMatch ? ThreatBand.direct : ThreatBand.general;
 }
 
 /// Calculates a numeric weight for alert severity.
 ///
-/// Used for sorting alerts within the same threat band.
-/// Higher weight = higher priority.
-///
 /// Mapping:
-/// - 'high' → 3
-/// - 'medium' → 2
-/// - all others (including 'low') → 1
-///
-/// Parameters:
-/// - [severity]: The severity string (case-insensitive)
-///
-/// Returns: Integer weight for sorting (higher = more severe)
+/// - high -> 3
+/// - medium -> 2
+/// - all others, including low -> 1
 int severityWeight(String severity) {
   switch (severity.toLowerCase()) {
     case 'high':
@@ -65,42 +65,31 @@ int severityWeight(String severity) {
 
 /// Sorts alerts by threat band and secondary criteria.
 ///
-/// Sort order (deterministic):
-/// 1. Direct threats first, general advisories second
-/// 2. Within each band:
-///    a. Severity weight descending (high → medium → low)
-///    b. Published date descending (newest first)
-///
-/// Parameters:
-/// - [alerts]: The list of alerts to sort (not mutated)
-/// - [householdRiskClassification]: The household's canonical risk classification
-///
-/// Returns: A new sorted list (original list is not modified)
-///
-/// Example:
-/// ```dart
-/// final household = Household(id: 'h1', risk_classification: 'coastal');
-/// final sorted = sortAlerts(alerts, household.risk_classification);
-/// // sorted[0] is the highest-priority alert
-/// ```
+/// Sort order:
+/// 1. Direct threats first, general advisories second.
+/// 2. Within each band, severity weight descending.
+/// 3. Within equal severity, publishedAt descending.
+/// 4. Exact ties preserve input order.
 List<CachedAlert> sortAlerts(
   List<CachedAlert> alerts,
   String householdRiskClassification,
 ) {
-  // Create a copy to avoid mutating the input list
-  final sorted = List<CachedAlert>.from(alerts);
+  final indexedAlerts = [
+    for (var index = 0; index < alerts.length; index++)
+      _IndexedAlert(index: index, alert: alerts[index]),
+  ];
 
-  sorted.sort((a, b) {
-    // Primary: threat band (direct first, general second)
+  indexedAlerts.sort((aEntry, bEntry) {
+    final a = aEntry.alert;
+    final b = bEntry.alert;
+
     final aBand = classifyThreat(a, householdRiskClassification);
     final bBand = classifyThreat(b, householdRiskClassification);
-
     final bandComparison = aBand.index.compareTo(bBand.index);
     if (bandComparison != 0) {
       return bandComparison;
     }
 
-    // Secondary: severity weight descending (higher weight first)
     final aWeight = severityWeight(a.severity);
     final bWeight = severityWeight(b.severity);
     final weightComparison = bWeight.compareTo(aWeight);
@@ -108,9 +97,25 @@ List<CachedAlert> sortAlerts(
       return weightComparison;
     }
 
-    // Tertiary: published date descending (newer first)
-    return b.publishedAt.compareTo(a.publishedAt);
+    final publishedComparison = b.publishedAt.compareTo(a.publishedAt);
+    if (publishedComparison != 0) {
+      return publishedComparison;
+    }
+
+    return aEntry.index.compareTo(bEntry.index);
   });
 
-  return sorted;
+  return [
+    for (final entry in indexedAlerts) entry.alert,
+  ];
+}
+
+class _IndexedAlert {
+  const _IndexedAlert({
+    required this.index,
+    required this.alert,
+  });
+
+  final int index;
+  final CachedAlert alert;
 }
