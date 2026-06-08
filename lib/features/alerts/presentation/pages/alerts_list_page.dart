@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:project_bihon/features/alerts/data/models/alert_sync_state.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
+import 'package:project_bihon/features/alerts/data/services/alert_sync_coordinator.dart';
 import 'package:project_bihon/features/alerts/data/services/alert_sync_service.dart';
 import 'package:project_bihon/features/alerts/domain/threat_classification.dart';
 import 'package:project_bihon/features/alerts/presentation/widgets/alert_card_factory.dart';
@@ -18,7 +19,7 @@ class AlertsListPage extends StatefulWidget {
     this.showBottomNavigation = true,
     this.onTabSelected,
     required this.alertsRepository,
-    required this.alertSyncService,
+    required this.alertSyncCoordinator,
     required this.householdRepository,
     this.syncStateBox,
   });
@@ -26,7 +27,7 @@ class AlertsListPage extends StatefulWidget {
   final bool showBottomNavigation;
   final ValueChanged<int>? onTabSelected;
   final AlertsRepository alertsRepository;
-  final AlertSyncService alertSyncService;
+  final AlertSyncCoordinator alertSyncCoordinator;
   final HouseholdRepository householdRepository;
   final Box<AlertSyncState>? syncStateBox;
 
@@ -36,7 +37,7 @@ class AlertsListPage extends StatefulWidget {
 
 class _AlertsListPageState extends State<AlertsListPage> {
   late final AlertsRepository _alertsRepository;
-  late final AlertSyncService _alertSyncService;
+  late final AlertSyncCoordinator _alertSyncCoordinator;
   late final HouseholdRepository _householdRepository;
   late final Box<AlertSyncState> _syncStateBox;
   bool _isRefreshing = false;
@@ -45,7 +46,7 @@ class _AlertsListPageState extends State<AlertsListPage> {
   void initState() {
     super.initState();
     _alertsRepository = widget.alertsRepository;
-    _alertSyncService = widget.alertSyncService;
+    _alertSyncCoordinator = widget.alertSyncCoordinator;
     _householdRepository = widget.householdRepository;
     _syncStateBox =
         widget.syncStateBox ?? Hive.box<AlertSyncState>(AlertSyncState.boxName);
@@ -62,7 +63,7 @@ class _AlertsListPageState extends State<AlertsListPage> {
 
     var succeeded = false;
     try {
-      succeeded = await _alertSyncService.syncAlerts();
+      succeeded = await _alertSyncCoordinator.syncManually();
     } catch (_) {
       succeeded = false;
     } finally {

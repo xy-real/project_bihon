@@ -11,6 +11,7 @@ import 'features/ai_preparedness_score/ui/ai_score_detail_screen.dart';
 import 'features/alerts/data/models/alert_sync_state.dart';
 import 'features/alerts/data/models/cached_alert.dart';
 import 'features/alerts/data/repositories/alerts_repository.dart';
+import 'features/alerts/data/services/alert_sync_coordinator.dart';
 import 'features/alerts/data/services/alert_sync_service.dart';
 import 'features/dashboard/presentation/pages/main_tab_shell.dart';
 import 'features/evacuation_centers/data/models/cached_evac_center.dart';
@@ -38,6 +39,7 @@ late ContactRepository _contactRepository;
 late HouseholdRepository _householdRepository;
 late AlertsRepository _alertsRepository;
 late AlertSyncService _alertSyncService;
+late AlertSyncCoordinator _alertSyncCoordinator;
 late EvacuationCenterRepository _evacuationCenterRepository;
 late LocalNotificationService _localNotificationService;
 late InstructionGuideRepository _instructionGuideRepository;
@@ -100,7 +102,8 @@ void main() async {
   );
 
   _alertSyncService = AlertSyncService();
-  unawaited(_alertSyncService.syncAlerts());
+  _alertSyncCoordinator = AlertSyncCoordinator(syncService: _alertSyncService);
+  unawaited(_alertSyncCoordinator.syncIfDue(trigger: 'app_launch'));
 
   // Initialize EvacuationCenterRepository
   _evacuationCenterRepository = EvacuationCenterRepository();
@@ -131,8 +134,37 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  static const Duration _foregroundSyncInterval = Duration(minutes: 15);
+
   ThemeMode _themeMode = ThemeMode.light;
+  Timer? _foregroundSyncTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _foregroundSyncTimer = Timer.periodic(
+      _foregroundSyncInterval,
+      (_) => unawaited(
+        _alertSyncCoordinator.syncIfDue(trigger: 'foreground_interval'),
+      ),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_alertSyncCoordinator.syncIfDue(trigger: 'app_resumed'));
+    }
+  }
+
+  @override
+  void dispose() {
+    _foregroundSyncTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   void _onThemeChanged(ThemeMode mode) {
     setState(() {
@@ -174,7 +206,7 @@ class _MyAppState extends State<MyApp> {
                   onThemeChanged: _onThemeChanged,
                   supplyRepository: _supplyRepository,
                   alertsRepository: _alertsRepository,
-                  alertSyncService: _alertSyncService,
+                  alertSyncCoordinator: _alertSyncCoordinator,
                   contactRepository: _contactRepository,
                   householdRepository: _householdRepository,
                   evacuationCenterRepository: _evacuationCenterRepository,
@@ -275,6 +307,9 @@ AlertsRepository getAlertsRepository() => _alertsRepository;
 
 /// Global getter for alert synchronization into the local Hive cache.
 AlertSyncService getAlertSyncService() => _alertSyncService;
+
+/// Global coordinator for rate-limited alert synchronization.
+AlertSyncCoordinator getAlertSyncCoordinator() => _alertSyncCoordinator;
 
 /// Global getter to access the EvacuationCenterRepository from anywhere in the app.
 EvacuationCenterRepository getEvacuationCenterRepository() => _evacuationCenterRepository;
