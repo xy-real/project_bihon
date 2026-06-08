@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:project_bihon/features/ai_preparedness_score/data/repositories/ai_score_repository.dart';
 import 'package:project_bihon/features/ai_preparedness_score/services/ai_score_service.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
+import 'package:project_bihon/features/alerts/data/services/alert_sync_coordinator.dart';
 import 'package:project_bihon/features/alerts/presentation/pages/alerts_list_page.dart';
 import 'package:project_bihon/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
@@ -24,6 +25,7 @@ class MainTabShell extends StatefulWidget {
     required this.onThemeChanged,
     required this.supplyRepository,
     required this.alertsRepository,
+    required this.alertSyncCoordinator,
     required this.contactRepository,
     required this.householdRepository,
     required this.evacuationCenterRepository,
@@ -37,6 +39,7 @@ class MainTabShell extends StatefulWidget {
   final ValueChanged<ThemeMode> onThemeChanged;
   final SupplyRepository supplyRepository;
   final AlertsRepository alertsRepository;
+  final AlertSyncCoordinator alertSyncCoordinator;
   final ContactRepository contactRepository;
   final HouseholdRepository householdRepository;
   final EvacuationCenterRepository evacuationCenterRepository;
@@ -187,6 +190,9 @@ class _MainTabShellState extends State<MainTabShell> {
         child: AlertsListPage(
           showBottomNavigation: false,
           onTabSelected: _goToTab,
+          alertsRepository: widget.alertsRepository,
+          alertSyncCoordinator: widget.alertSyncCoordinator,
+          householdRepository: widget.householdRepository,
         ),
       ),
       _KeepAliveTab(

@@ -4,6 +4,8 @@ part 'cached_alert.g.dart';
 
 @HiveType(typeId: 2)
 class CachedAlert extends HiveObject {
+  static const String boxName = 'alert_box';
+
   @HiveField(0)
   final String id;
 

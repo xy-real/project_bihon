@@ -1,47 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:project_bihon/features/alerts/data/models/alert_sync_state.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 import 'package:project_bihon/features/alerts/data/repositories/alerts_repository.dart';
+import 'package:project_bihon/features/alerts/data/services/alert_sync_coordinator.dart';
+import 'package:project_bihon/features/alerts/data/services/alert_sync_service.dart';
 import 'package:project_bihon/features/alerts/domain/threat_classification.dart';
 import 'package:project_bihon/features/alerts/presentation/widgets/alert_card_factory.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/household/data/repositories/household_repository.dart';
-import 'package:project_bihon/main.dart'
-    show getAlertsRepository, getHouseholdRepository;
 import 'package:project_bihon/shared/models/household.dart';
 
-/// Alerts list screen with location-specific threat classification.
-///
-/// ## Design Notes:
-/// - Reads Household profile from Hive (local only, no network calls)
-/// - Reads CachedAlerts from Hive (local only, no network calls)
-/// - Applies sortAlerts() to enforce deterministic ordering
-/// - Uses buildAlertCard() factory to render direct vs. general threats
-/// - Fully functional in airplane mode with cached data only
-/// - Handles all null/missing cases gracefully (no crashes)
-///
-/// ## QA Scenarios (manual verification after app runs):
-/// 1. Set profile risk to `coastal`:
-///    → Coastal-tagged alerts should be pinned at top with HIGH RISK styling
-/// 2. Change risk to `flood_prone`:
-///    → Close/reopen alerts screen; list should reprioritize automatically
-/// 3. Alert with empty riskTags:
-///    → Should render as GeneralAdvisoryAlertCard (not highlighted)
-/// 4. Delete/reset household profile:
-///    → No crash; all alerts render as general advisories (safe fallback)
-/// 5. Airplane mode test:
-///    → Same ordering, highlighting, and functionality from cached data only
 class AlertsListPage extends StatefulWidget {
   const AlertsListPage({
     super.key,
     this.showBottomNavigation = true,
     this.onTabSelected,
+    required this.alertsRepository,
+    required this.alertSyncCoordinator,
+    required this.householdRepository,
+    this.syncStateBox,
   });
 
   final bool showBottomNavigation;
   final ValueChanged<int>? onTabSelected;
+  final AlertsRepository alertsRepository;
+  final AlertSyncCoordinator alertSyncCoordinator;
+  final HouseholdRepository householdRepository;
+  final Box<AlertSyncState>? syncStateBox;
 
   @override
   State<AlertsListPage> createState() => _AlertsListPageState();
@@ -49,18 +37,52 @@ class AlertsListPage extends StatefulWidget {
 
 class _AlertsListPageState extends State<AlertsListPage> {
   late final AlertsRepository _alertsRepository;
+  late final AlertSyncCoordinator _alertSyncCoordinator;
   late final HouseholdRepository _householdRepository;
+  late final Box<AlertSyncState> _syncStateBox;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    _alertsRepository = getAlertsRepository();
-    _householdRepository = getHouseholdRepository();
+    _alertsRepository = widget.alertsRepository;
+    _alertSyncCoordinator = widget.alertSyncCoordinator;
+    _householdRepository = widget.householdRepository;
+    _syncStateBox =
+        widget.syncStateBox ?? Hive.box<AlertSyncState>(AlertSyncState.boxName);
   }
 
-  /// Handle "More Details" tap on an alert card.
-  ///
-  /// Currently shows a snackbar; later can navigate to detail page.
+  Future<void> _refreshAlerts() async {
+    if (_isRefreshing) {
+      return;
+    }
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    var succeeded = false;
+    try {
+      succeeded = await _alertSyncCoordinator.syncManually();
+    } catch (_) {
+      succeeded = false;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
+
+    if (!succeeded && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to refresh. Showing cached alerts.'),
+        ),
+      );
+    }
+  }
+
   void _onMoreDetails(CachedAlert alert) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -98,9 +120,6 @@ class _AlertsListPageState extends State<AlertsListPage> {
     }
   }
 
-  /// Calculate the risk classification from household, with safe fallback.
-  ///
-  /// Returns 'unknown' if household is null or risk_classification is empty.
   String _getRiskClassification(Household? household) {
     if (household == null) return 'unknown';
     final riskClassification = household.risk_classification;
@@ -108,64 +127,19 @@ class _AlertsListPageState extends State<AlertsListPage> {
     return riskClassification;
   }
 
-  /// Render the alert list or empty state.
-  ///
-  /// Applies threat classification and sorting (Steps 2 + 3).
-  /// Uses buildAlertCard factory to render correct card type (Steps 1 + 4).
   Widget _buildAlertsList(
     List<CachedAlert> alerts,
     String riskClassification,
+    AlertSyncState? syncState,
   ) {
-    // Handle empty alerts (offline resilience: no crash)
     if (alerts.isEmpty) {
-      return Container(
-        constraints: const BoxConstraints(minHeight: 220),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: DashboardDesign.surface(context),
-          borderRadius: BorderRadius.circular(DashboardDesign.radius),
-          border: Border.all(color: DashboardDesign.outline(context)),
-          boxShadow: DashboardDesign.cardShadow(context),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: DashboardDesign.statusBackground(
-                  context,
-                  DashboardDesign.info,
-                ),
-              ),
-              child: const Icon(
-                Icons.notifications_none_rounded,
-                color: DashboardDesign.info,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'No active alerts',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Cached alerts will appear here when they are available.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: DashboardDesign.mutedText(context),
-                  ),
-            ),
-          ],
-        ),
+      return _EmptyAlertsState(
+        hasSyncError: _hasSyncError(syncState),
+        isRefreshing: _isRefreshing,
+        onRefresh: _refreshAlerts,
       );
     }
 
-    // Sort alerts using Step 2 logic (deterministic ordering)
     final sortedAlerts = sortAlerts(alerts, riskClassification);
 
     return Column(
@@ -174,11 +148,7 @@ class _AlertsListPageState extends State<AlertsListPage> {
           Builder(
             builder: (context) {
               final alert = sortedAlerts[index];
-
-              // Classify threat using Step 2 logic
               final threatBand = classifyThreat(alert, riskClassification);
-
-              // Render using Step 4 factory (correct card type based on threat band)
               return buildAlertCard(
                 alert: alert,
                 threatBand: threatBand,
@@ -220,6 +190,151 @@ class _AlertsListPageState extends State<AlertsListPage> {
     );
   }
 
+  Widget _buildFreshnessBanner({
+    required AlertSyncState? syncState,
+    required bool hasCachedAlerts,
+  }) {
+    final state = _freshnessState(syncState, hasCachedAlerts);
+    final statusColor = switch (state.kind) {
+      _FreshnessKind.ok => DashboardDesign.success,
+      _FreshnessKind.warning => DashboardDesign.warning,
+      _FreshnessKind.error => DashboardDesign.danger,
+      _FreshnessKind.empty => DashboardDesign.info,
+    };
+    final statusIcon = switch (state.kind) {
+      _FreshnessKind.ok => Icons.check_circle_outline_rounded,
+      _FreshnessKind.warning => Icons.wifi_off_rounded,
+      _FreshnessKind.error => Icons.error_outline_rounded,
+      _FreshnessKind.empty => Icons.notifications_none_rounded,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: DashboardDesign.statusBackground(context, statusColor),
+              borderRadius: BorderRadius.circular(
+                DashboardDesign.compactRadius,
+              ),
+            ),
+            child: Icon(statusIcon, color: statusColor, size: 21),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  state.title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                if (state.subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    state.subtitle!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: DashboardDesign.mutedText(context),
+                          height: 1.35,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (_isRefreshing) ...[
+            const SizedBox(width: 10),
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  _FreshnessState _freshnessState(
+    AlertSyncState? syncState,
+    bool hasCachedAlerts,
+  ) {
+    final hasError = _hasSyncError(syncState);
+    if (hasError && hasCachedAlerts) {
+      return const _FreshnessState(
+        kind: _FreshnessKind.warning,
+        title: 'Offline: showing cached alerts',
+        subtitle: 'Last refresh failed. Pull down to try again.',
+      );
+    }
+
+    if (hasError && !hasCachedAlerts) {
+      return const _FreshnessState(
+        kind: _FreshnessKind.error,
+        title: 'No cached alerts yet',
+        subtitle: 'Unable to refresh alerts. Pull down to try again.',
+      );
+    }
+
+    final updatedAt = syncState?.lastSuccessfulSyncAt;
+    if (updatedAt != null) {
+      return _FreshnessState(
+        kind: _FreshnessKind.ok,
+        title: 'Updated ${_formatElapsed(updatedAt)} ago',
+        subtitle: 'Alerts are loaded from the local cache.',
+      );
+    }
+
+    if (!hasCachedAlerts) {
+      return const _FreshnessState(
+        kind: _FreshnessKind.empty,
+        title: 'No cached alerts yet',
+        subtitle: 'Pull down to fetch alerts when connected.',
+      );
+    }
+
+    return const _FreshnessState(
+      kind: _FreshnessKind.warning,
+      title: 'Offline: showing cached alerts',
+      subtitle: 'Cached alerts are available without a recent sync timestamp.',
+    );
+  }
+
+  static bool _hasSyncError(AlertSyncState? syncState) {
+    final error = syncState?.lastError;
+    return error != null && error.trim().isNotEmpty;
+  }
+
+  String _formatElapsed(DateTime updatedAt) {
+    final now = DateTime.now().toUtc();
+    final elapsed = now.difference(updatedAt.toUtc());
+    if (elapsed.inMinutes < 1) {
+      return 'just now';
+    }
+    if (elapsed.inHours < 1) {
+      final minutes = elapsed.inMinutes;
+      return '$minutes minute${minutes == 1 ? '' : 's'}';
+    }
+    if (elapsed.inDays < 1) {
+      final hours = elapsed.inHours;
+      return '$hours hour${hours == 1 ? '' : 's'}';
+    }
+    final days = elapsed.inDays;
+    return '$days day${days == 1 ? '' : 's'}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
@@ -235,56 +350,153 @@ class _AlertsListPageState extends State<AlertsListPage> {
               onDestinationSelected: _openTab,
             )
           : null,
-      body: ValueListenableBuilder<Box<CachedAlert>>(
-        valueListenable: _alertsRepository.getAlertsListenable(),
-        builder: (context, alertsBox, _) {
-          // Task A: Read household from Hive (local only, no network)
-          final household = _householdRepository.getHousehold();
-          final riskClassification = _getRiskClassification(household);
+      body: RefreshIndicator(
+        onRefresh: _refreshAlerts,
+        child: ValueListenableBuilder<Box<CachedAlert>>(
+          valueListenable: _alertsRepository.getAlertsListenable(),
+          builder: (context, alertsBox, _) {
+            return ValueListenableBuilder<Box<AlertSyncState>>(
+              valueListenable: _syncStateBox.listenable(),
+              builder: (context, syncStateBox, _) {
+                final household = _householdRepository.getHousehold();
+                final riskClassification = _getRiskClassification(household);
+                final alerts = alertsBox.values
+                    .where((alert) => alert.isActive)
+                    .toList(growable: false);
+                final syncState =
+                    syncStateBox.get(AlertSyncService.syncStateKey);
 
-          // Task A: Read alerts from Hive (local only, no network)
-          final alerts = _alertsRepository.getActiveAlerts();
-
-          // Task B: Apply resilience:
-          // - Household is null (handled by _getRiskClassification → 'unknown')
-          // - risk_classification is empty or 'unknown' (handled by _getRiskClassification)
-          // - alert.riskTags can be null/empty (sortAlerts/classifyThreat handle it)
-          // - alerts list is empty (handled by empty state widget above)
-          // → No crash paths; all cases render safely
-
-          // Task C: No network dependency in render path (verified below)
-          // - _alertsRepository.getActiveAlerts() → pure Hive read
-          // - _householdRepository.getHousehold() → pure Hive read
-          // - sortAlerts() → pure function, no side effects
-          // - classifyThreat() → pure function, no side effects
-          // - buildAlertCard() → pure widget, no network calls
-          // → Fully functional in airplane mode
-
-          return SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                DashboardDesign.gap,
-                horizontalPadding,
-                widget.showBottomNavigation ? 96 : 24,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: DashboardDesign.gap),
-                      _buildAlertsList(alerts, riskClassification),
-                    ],
+                return SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      DashboardDesign.gap,
+                      horizontalPadding,
+                      widget.showBottomNavigation ? 96 : 24,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 900),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: DashboardDesign.gap),
+                            _buildFreshnessBanner(
+                              syncState: syncState,
+                              hasCachedAlerts: alerts.isNotEmpty,
+                            ),
+                            const SizedBox(height: DashboardDesign.gap),
+                            _buildAlertsList(
+                              alerts,
+                              riskClassification,
+                              syncState,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+enum _FreshnessKind { ok, warning, error, empty }
+
+class _FreshnessState {
+  const _FreshnessState({
+    required this.kind,
+    required this.title,
+    this.subtitle,
+  });
+
+  final _FreshnessKind kind;
+  final String title;
+  final String? subtitle;
+}
+
+class _EmptyAlertsState extends StatelessWidget {
+  const _EmptyAlertsState({
+    required this.hasSyncError,
+    required this.isRefreshing,
+    required this.onRefresh,
+  });
+
+  final bool hasSyncError;
+  final bool isRefreshing;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 240),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: DashboardDesign.statusBackground(
+                context,
+                hasSyncError ? DashboardDesign.danger : DashboardDesign.info,
               ),
             ),
-          );
-        },
+            child: Icon(
+              hasSyncError
+                  ? Icons.error_outline_rounded
+                  : Icons.notifications_none_rounded,
+              color:
+                  hasSyncError ? DashboardDesign.danger : DashboardDesign.info,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No cached alerts yet',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hasSyncError
+                ? 'Unable to refresh alerts. Connect to the internet and try again.'
+                : 'Pull down to fetch alerts when connected.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                  height: 1.4,
+                ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: isRefreshing ? null : onRefresh,
+            icon: isRefreshing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded),
+            label: Text(isRefreshing ? 'Refreshing' : 'Refresh'),
+          ),
+        ],
       ),
     );
   }

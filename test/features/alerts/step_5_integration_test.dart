@@ -207,6 +207,18 @@ void main() {
         expect(classifyThreat(alert, 'unknown'), ThreatBand.general);
       }
     });
+
+    test('urban household is safely treated as unknown/general', () {
+      final alerts = [
+        createTestAlert(id: 'urban_tagged', riskTags: ['urban']),
+        createTestAlert(id: 'coastal_tagged', riskTags: ['coastal']),
+      ];
+      final sorted = sortAlerts(alerts, 'urban');
+
+      for (final alert in sorted) {
+        expect(classifyThreat(alert, 'urban'), ThreatBand.general);
+      }
+    });
   });
 
   group('QA Scenario 5: Airplane mode test', () {

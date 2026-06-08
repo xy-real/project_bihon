@@ -483,5 +483,63 @@ void main() {
       expect(find.byType(DirectThreatAlertCard), findsOneWidget);
       expect(find.byType(GeneralAdvisoryAlertCard), findsOneWidget);
     });
+
+    testWidgets('cached direct threat alert renders from local model',
+        (WidgetTester tester) async {
+      final alert = createTestAlert(
+        id: 'cached_direct',
+        title: 'Cached Coastal Warning',
+        content: 'Storm surge is possible for coastal barangays.',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: buildAlertCard(
+              alert: alert,
+              threatBand: ThreatBand.direct,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(DirectThreatAlertCard), findsOneWidget);
+      expect(find.text('Cached Coastal Warning'), findsOneWidget);
+      expect(
+        find.text('Storm surge is possible for coastal barangays.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('offline cached alert remains visible with cache banner',
+        (WidgetTester tester) async {
+      final alert = createTestAlert(
+        id: 'cached_offline',
+        title: 'Cached Offline Advisory',
+        content: 'Cached content remains available without a live sync.',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const Text('Offline: showing cached alerts'),
+                  buildAlertCard(
+                    alert: alert,
+                    threatBand: ThreatBand.general,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Offline: showing cached alerts'), findsOneWidget);
+      expect(find.byType(GeneralAdvisoryAlertCard), findsOneWidget);
+      expect(find.text('Cached Offline Advisory'), findsOneWidget);
+    });
   });
 }

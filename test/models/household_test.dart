@@ -48,6 +48,14 @@ void main() {
       expect(household.risk_classification, equals('unknown'));
     });
 
+    test('maps unsupported "urban" risk_classification to "unknown"', () {
+      final household = Household(
+        id: 'test_household',
+        risk_classification: 'urban',
+      );
+      expect(household.risk_classification, equals('unknown'));
+    });
+
     test('defaults to "unknown" for empty risk_classification', () {
       final household = Household(
         id: 'test_household',
