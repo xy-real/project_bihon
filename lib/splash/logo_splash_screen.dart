@@ -3,10 +3,7 @@ import 'package:video_player/video_player.dart';
 import 'dart:async';
 
 class LogoSplashScreen extends StatefulWidget {
-  const LogoSplashScreen({
-    super.key,
-    this.resolveNextRoute,
-  });
+  const LogoSplashScreen({super.key, this.resolveNextRoute});
 
   final Future<String> Function()? resolveNextRoute;
 
@@ -26,7 +23,9 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
     super.initState();
     debugPrint('[SPLASH] initState called');
     WidgetsBinding.instance.addObserver(this);
-    _videoStateNotifier = ValueNotifier(VideoPlayerValue(duration: Duration.zero));
+    _videoStateNotifier = ValueNotifier(
+      VideoPlayerValue(duration: Duration.zero),
+    );
     _scheduleFallbackNavigation();
     _initializeVideo();
   }
@@ -35,7 +34,9 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
     _fallbackTimer?.cancel();
     debugPrint('[SPLASH] Scheduling fallback navigation in 3 seconds');
     _fallbackTimer = Timer(const Duration(seconds: 3), () {
-      debugPrint('[SPLASH] Fallback timer fired, mounted=$mounted, triggered=$_navigationTriggered');
+      debugPrint(
+        '[SPLASH] Fallback timer fired, mounted=$mounted, triggered=$_navigationTriggered',
+      );
       if (mounted && !_navigationTriggered) {
         _navigateNext('[SPLASH] Fallback');
       }
@@ -92,7 +93,9 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
     } catch (e) {
       debugPrint('[SPLASH] Video initialization failed: $e');
       if (mounted) {
-        debugPrint('[SPLASH] Scheduling 1.5s delayed navigation after video error');
+        debugPrint(
+          '[SPLASH] Scheduling 1.5s delayed navigation after video error',
+        );
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (mounted && !_navigationTriggered) {
             _navigateNext('[SPLASH] Delayed nav after video error');
@@ -112,8 +115,10 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
 
     _videoStateNotifier.value = controller.value;
 
-    final isVideoEnded = controller.value.isInitialized &&
-        controller.value.position >= controller.value.duration - const Duration(milliseconds: 100);
+    final isVideoEnded =
+        controller.value.isInitialized &&
+        controller.value.position >=
+            controller.value.duration - const Duration(milliseconds: 100);
 
     if (isVideoEnded && !_navigationTriggered) {
       debugPrint('[SPLASH] Video completed, navigating to next route');
@@ -160,7 +165,9 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
           valueListenable: _videoStateNotifier,
           builder: (context, videoState, _) {
             // If video is initialized and has no error, show video
-            if (videoState.isInitialized && !videoState.hasError && _controller != null) {
+            if (videoState.isInitialized &&
+                !videoState.hasError &&
+                _controller != null) {
               return Container(
                 color: Colors.white,
                 child: Center(
@@ -172,33 +179,15 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
               );
             }
 
-            // Fallback: show static logo placeholder or text
+            // Keep the intended Crisync branding visible while the video loads.
             return SizedBox.expand(
               child: ColoredBox(
                 color: Colors.white,
                 child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.shield_rounded, size: 60, color: Color(0xFF4CAF50)),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Crisync',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B5E20),
-                        ),
-                      ),
-                    ],
+                  child: Image.asset(
+                    'assets/logo.png',
+                    width: 280,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
@@ -208,5 +197,4 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
       ),
     );
   }
-
 }
