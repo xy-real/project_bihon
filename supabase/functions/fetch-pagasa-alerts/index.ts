@@ -2,6 +2,10 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const FUNCTION_NAME = 'fetch-pagasa-alerts';
 const ALERTS_TABLE = 'global_alerts';
+const SOURCE_URL_ENV = 'PAGASA_ALERT_SOURCE_URL';
+const FETCH_TIMEOUT_MS = 10_000;
+const MAX_FETCH_ATTEMPTS = 3;
+const USER_AGENT = 'Crisync academic emergency preparedness project';
 
 type IngestResponse = {
   ok: true;
@@ -50,6 +54,13 @@ type NormalizedAlertRow = {
 };
 
 type SupabaseAdminClient = ReturnType<typeof createSupabaseAdminClient>;
+
+class PublicSourceFetchError extends Error {
+  constructor(message: string, readonly safeMessage: string) {
+    super(message);
+    this.name = 'PublicSourceFetchError';
+  }
+}
 
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
@@ -126,6 +137,20 @@ Deno.serve(async (request: Request): Promise<Response> => {
       reason: error instanceof Error ? error.message : String(error),
     });
 
+    if (error instanceof PublicSourceFetchError) {
+      return jsonResponse(
+        {
+          ok: false,
+          function: FUNCTION_NAME,
+          error: {
+            code: 'source_fetch_failed',
+            message: error.safeMessage,
+          },
+        },
+        502,
+      );
+    }
+
     return jsonResponse(
       {
         ok: false,
@@ -143,25 +168,65 @@ Deno.serve(async (request: Request): Promise<Response> => {
 });
 
 async function fetchUpstreamAlerts(request: Request): Promise<FetchSourceResult> {
-  // TODO(fetch-pagasa-alerts): Fetch real PAGASA/NDRRMC source payloads.
-  // TODO(fetch-pagasa-alerts): Add timeout, retry, and source-specific parsers.
-  if (isLocalFixtureRequest(request)) {
+  // TODO(fetch-pagasa-alerts): Replace this public-page parser with an official
+  // PAGASA API parser if one becomes available for this use case.
+  const localFixture = getLocalFixtureName(request);
+  if (localFixture === 'sample') {
     return {
       message: 'Loaded local fixture alerts.',
       records: createLocalFixtureAlerts(),
     };
   }
 
+  if (localFixture === 'html') {
+    const parsedRecord = await parsePublicAlertPage(
+      createLocalHtmlFixture(),
+      'local-fixture://pagasa-alert-page',
+      new Date(),
+    );
+
+    return {
+      message: 'Loaded local HTML parser fixture.',
+      records: isRelevantToBaybayArea(parsedRecord) ? [parsedRecord] : [],
+    };
+  }
+
+  const sourceUrl = sanitizeOptionalText(Deno.env.get(SOURCE_URL_ENV));
+  if (!sourceUrl) {
+    return {
+      message: `${SOURCE_URL_ENV} is not configured.`,
+      records: [],
+    };
+  }
+
+  const html = await fetchPublicSourceText(sourceUrl);
+  const parsedRecord = await parsePublicAlertPage(html, sourceUrl, new Date());
+
+  if (!isRelevantToBaybayArea(parsedRecord)) {
+    logEvent('source_not_relevant', {
+      source_host: safeHostname(sourceUrl),
+      title: sanitizeOptionalText(parsedRecord.title),
+    });
+
+    return {
+      message: 'Configured source was fetched, but no Baybay/Eastern Visayas relevant alert was found.',
+      records: [],
+    };
+  }
+
   return {
-    message: 'No upstream source configured yet.',
-    records: [],
+    message: 'Configured public alert source fetched and parsed.',
+    records: [parsedRecord],
   };
 }
 
-function isLocalFixtureRequest(request: Request): boolean {
+function getLocalFixtureName(request: Request): string | null {
   const url = new URL(request.url);
-  return Deno.env.get('PAGASA_ENABLE_LOCAL_FIXTURE') === 'true' &&
-    url.searchParams.get('fixture') === 'sample';
+  if (Deno.env.get('PAGASA_ENABLE_LOCAL_FIXTURE') !== 'true') {
+    return null;
+  }
+
+  return sanitizeOptionalText(url.searchParams.get('fixture'));
 }
 
 function createLocalFixtureAlerts(): RawAlertLike[] {
@@ -184,6 +249,304 @@ function createLocalFixtureAlerts(): RawAlertLike[] {
       is_active: true,
     },
   ];
+}
+
+function createLocalHtmlFixture(): string {
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <title>Heavy Rainfall Advisory for Eastern Visayas</title>
+      </head>
+      <body>
+        <h1>Heavy Rainfall Advisory for Eastern Visayas</h1>
+        <p>Published: June 8, 2026 8:00 AM</p>
+        <p>
+          PAGASA advises residents of Baybay City, Leyte and nearby low-lying
+          areas to monitor flooding and landslide-prone communities.
+        </p>
+      </body>
+    </html>
+  `;
+}
+
+async function fetchPublicSourceText(sourceUrl: string): Promise<string> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(sourceUrl, FETCH_TIMEOUT_MS);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      lastError = error;
+      logEvent('source_fetch_attempt_failed', {
+        attempt,
+        max_attempts: MAX_FETCH_ATTEMPTS,
+        source_host: safeHostname(sourceUrl),
+        reason: error instanceof Error ? error.message : String(error),
+      });
+
+      if (attempt < MAX_FETCH_ATTEMPTS) {
+        await delay(500 * 2 ** (attempt - 1));
+      }
+    }
+  }
+
+  throw new PublicSourceFetchError(
+    lastError instanceof Error ? lastError.message : String(lastError),
+    'Unable to fetch configured PAGASA alert source.',
+  );
+}
+
+async function fetchWithTimeout(
+  sourceUrl: string,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(sourceUrl, {
+      signal: controller.signal,
+      headers: {
+        accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
+        'user-agent': USER_AGENT,
+      },
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function parsePublicAlertPage(
+  html: string,
+  sourceUrl: string,
+  now: Date,
+): Promise<RawAlertLike> {
+  const readableText = htmlToReadableText(html);
+  const title = extractTitle(html, readableText);
+  const content = extractContent(readableText, title);
+  const publishedAt = extractPublishedDate(readableText, now);
+  const advisoryType = inferAdvisoryType(`${title} ${content}`);
+  const affectedAreas = inferAffectedAreas(`${title} ${content}`);
+
+  return {
+    source: 'PAGASA',
+    source_alert_id: await buildSourceAlertId({
+      title,
+      sourceUrl,
+      publishedAt,
+    }),
+    title,
+    severity: inferSeverity(`${title} ${content}`),
+    advisory_type: advisoryType,
+    content,
+    region: affectedAreas.length > 0 ? 'Eastern Visayas' : null,
+    affected_areas: affectedAreas,
+    risk_tags: inferRiskTags(`${title} ${content}`),
+    latitude: null,
+    longitude: null,
+    published_at: publishedAt,
+    updated_at: now.toISOString(),
+    expires_at: null,
+    is_active: true,
+  };
+}
+
+function htmlToReadableText(html: string): string {
+  return decodeHtmlEntities(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<\/(p|div|section|article|header|footer|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .split('\n')
+    .map((line) => sanitizeText(line))
+    .filter((line) => line.length > 0)
+    .join('\n');
+}
+
+function extractTitle(html: string, readableText: string): string {
+  const candidates = [
+    matchHtmlContent(html, /<h1[^>]*>([\s\S]*?)<\/h1>/i),
+    matchHtmlAttribute(
+      html,
+      /<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    ),
+    matchHtmlContent(html, /<title[^>]*>([\s\S]*?)<\/title>/i),
+    readableText.split('\n')[0],
+  ];
+
+  return sanitizeRequiredText(
+    candidates.find((candidate) => sanitizeText(candidate).length > 0),
+    'title',
+  );
+}
+
+function extractContent(readableText: string, title: string): string {
+  const lines = readableText
+    .split('\n')
+    .map((line) => sanitizeText(line))
+    .filter((line) => line.length > 0);
+  const bodyLines = lines.filter((line, index) =>
+    index !== 0 || line.toLowerCase() !== title.toLowerCase()
+  );
+  const content = sanitizeText(bodyLines.join(' '));
+
+  return content || title;
+}
+
+function extractPublishedDate(readableText: string, now: Date): string {
+  const text = readableText.replace(/\s+/g, ' ');
+  const patterns = [
+    /(?:published|issued|posted|updated)\s*:?\s*([A-Z][a-z]+ \d{1,2}, \d{4}(?:\s+\d{1,2}:\d{2}\s*(?:AM|PM)?)?)/i,
+    /(\d{1,2}\s+[A-Z][a-z]+\s+\d{4}(?:\s+\d{1,2}:\d{2}\s*(?:AM|PM)?)?)/i,
+    /(\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match?.[1]) {
+      continue;
+    }
+
+    const parsed = parseDate(match[1]);
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  return now.toISOString();
+}
+
+function inferAdvisoryType(text: string): string {
+  const normalized = text.toLowerCase();
+  if (/\bstorm surge\b/.test(normalized)) return 'storm_surge';
+  if (/\btyphoon\b|\btropical cyclone\b|\bstorm warning\b/.test(normalized)) {
+    return 'typhoon';
+  }
+  if (/\brainfall\b|\bheavy rain\b|\bmonsoon\b/.test(normalized)) {
+    return 'rainfall';
+  }
+  if (/\bflood\b|\bflooding\b/.test(normalized)) return 'flood';
+  if (/\bheat\b|\bheat index\b/.test(normalized)) return 'heat';
+  return 'general';
+}
+
+function inferSeverity(text: string): string {
+  const normalized = text.toLowerCase();
+  if (
+    /\burgent\b|\bsevere\b|\bheavy rainfall\b|\btyphoon warning\b|\bstorm surge warning\b/
+      .test(normalized)
+  ) {
+    return 'high';
+  }
+  if (/\badvisory\b|\bmoderate\b|\bwatch\b/.test(normalized)) {
+    return 'medium';
+  }
+  return 'low';
+}
+
+function inferRiskTags(text: string): string[] {
+  const normalized = text.toLowerCase();
+  const tags: string[] = [];
+
+  if (/\bflood\b|\bflooding\b|\bheavy rainfall\b|\blow-lying\b|\blow lying\b/.test(normalized)) {
+    tags.push('flood_prone');
+  }
+  if (/\bstorm surge\b|\bcoastal\b|\btyphoon\b|\btropical cyclone\b/.test(normalized)) {
+    tags.push('coastal');
+  }
+  if (/\blandslide\b|\bmountain\b|\bsteep slope\b|\bsteep slopes\b/.test(normalized)) {
+    tags.push('landslide_prone');
+  }
+
+  return dedupeStrings(tags);
+}
+
+function inferAffectedAreas(text: string): string[] {
+  const normalized = text.toLowerCase();
+  const areas: string[] = [];
+
+  if (/\bbaybay\b|\bbaybay city\b/.test(normalized)) areas.push('Baybay City');
+  if (/\bleyte\b/.test(normalized)) areas.push('Leyte');
+  if (/\beastern visayas\b|\bregion viii\b|\bregion 8\b/.test(normalized)) {
+    areas.push('Eastern Visayas');
+  }
+  if (/\bvisayas\b/.test(normalized)) areas.push('Visayas');
+
+  return dedupeStrings(areas);
+}
+
+function isRelevantToBaybayArea(record: RawAlertLike): boolean {
+  const haystack = [
+    record.title,
+    record.content,
+    record.region,
+    ...(coerceList(record.affected_areas ?? record.affectedAreas)),
+  ].map((item) => sanitizeText(item).toLowerCase()).join(' ');
+
+  return /\bbaybay\b|\bleyte\b|\beastern visayas\b|\bregion viii\b|\bregion 8\b|\bvisayas\b/
+    .test(haystack);
+}
+
+async function buildSourceAlertId(input: {
+  title: string;
+  sourceUrl: string;
+  publishedAt: string;
+}): Promise<string> {
+  return `public-page-${await deterministicUuid(
+    `${input.sourceUrl}|${input.title}|${input.publishedAt}`,
+  )}`;
+}
+
+function matchHtmlContent(html: string, pattern: RegExp): string | null {
+  const match = html.match(pattern);
+  return match?.[1] ? htmlToReadableText(match[1]) : null;
+}
+
+function matchHtmlAttribute(html: string, pattern: RegExp): string | null {
+  const match = html.match(pattern);
+  return match?.[1] ? decodeHtmlEntities(match[1]) : null;
+}
+
+function decodeHtmlEntities(value: string): string {
+  const namedEntities: Record<string, string> = {
+    amp: '&',
+    apos: "'",
+    gt: '>',
+    lt: '<',
+    nbsp: ' ',
+    quot: '"',
+  };
+
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (entity, code) => {
+    const normalizedCode = String(code).toLowerCase();
+    if (normalizedCode.startsWith('#x')) {
+      return String.fromCodePoint(Number.parseInt(normalizedCode.slice(2), 16));
+    }
+    if (normalizedCode.startsWith('#')) {
+      return String.fromCodePoint(Number.parseInt(normalizedCode.slice(1), 10));
+    }
+    return namedEntities[normalizedCode] ?? entity;
+  });
+}
+
+function safeHostname(sourceUrl: string): string {
+  try {
+    return new URL(sourceUrl).hostname;
+  } catch (_) {
+    return 'invalid-url';
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function normalizeAlertRecord(
