@@ -4,9 +4,11 @@ import 'package:project_bihon/features/evacuation_centers/data/models/cached_eva
 import 'package:project_bihon/features/evacuation_centers/presentation/widgets/evac_center_card.dart';
 
 void main() {
-  testWidgets('lays out center content and actions without exceptions', (
+  testWidgets('shows center details and actions without status or capacity', (
     tester,
   ) async {
+    var directionsPressed = false;
+    var callPressed = false;
     final center = CachedEvacCenter(
       id: 'center-1',
       name: 'VSU Convention Center Evacuation Center',
@@ -24,7 +26,9 @@ void main() {
               width: 360,
               child: EvacCenterCard(
                 center: center,
-                onViewDirections: () {},
+                distanceMeters: 2400,
+                onViewDirections: () => directionsPressed = true,
+                onCall: () => callPressed = true,
               ),
             ),
           ),
@@ -35,8 +39,24 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text(center.name), findsOneWidget);
-    expect(find.text('NEAR CAPACITY'), findsOneWidget);
+    expect(find.text('2.4 km away'), findsOneWidget);
     expect(find.text('VIEW DIRECTIONS'), findsOneWidget);
     expect(find.text('CALL'), findsOneWidget);
+    expect(find.text('NEAR CAPACITY'), findsNothing);
+    expect(find.text('Capacity'), findsNothing);
+    expect(find.text('80%'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+
+    final directions = find.text('VIEW DIRECTIONS');
+    final call = find.text('CALL');
+    expect(
+      tester.getTopLeft(call).dy,
+      greaterThan(tester.getTopLeft(directions).dy),
+    );
+
+    await tester.tap(directions);
+    await tester.tap(call);
+    expect(directionsPressed, isTrue);
+    expect(callPressed, isTrue);
   });
 }
