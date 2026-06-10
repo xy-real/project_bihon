@@ -46,3 +46,10 @@ app.*.map.json
 
 #documentation
 .docs
+
+# MCP configuration
+mcp.json
+
+#design
+DESIGN.md
+FEATURE_AUDIT.md

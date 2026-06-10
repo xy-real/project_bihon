@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/emergency_contacts/data/models/contact.dart';
 import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository_exceptions.dart';
@@ -10,7 +13,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 class ContactsPage extends StatefulWidget {
-  const ContactsPage({super.key});
+  const ContactsPage({
+    super.key,
+    this.showBottomNavigation = true,
+    this.onTabSelected,
+  });
+
+  final bool showBottomNavigation;
+  final ValueChanged<int>? onTabSelected;
 
   @override
   State<ContactsPage> createState() => _ContactsPageState();
@@ -45,7 +55,13 @@ class _ContactsPageState extends State<ContactsPage> {
       final name = contact.name.toLowerCase();
       final phone = contact.phoneNumber.toLowerCase();
       final type = contact.type.toLowerCase();
-      return name.contains(query) || phone.contains(query) || type.contains(query);
+      final management = contact.isPreFilled
+          ? 'official authorities system managed verified agency'
+          : 'personal network family neighbor';
+      return name.contains(query) ||
+          phone.contains(query) ||
+          type.contains(query) ||
+          management.contains(query);
     }).toList();
   }
 
@@ -56,7 +72,9 @@ class _ContactsPageState extends State<ContactsPage> {
     }
 
     for (final entry in grouped.entries) {
-      entry.value.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      entry.value.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
     }
 
     return grouped;
@@ -65,12 +83,22 @@ class _ContactsPageState extends State<ContactsPage> {
   List<String> _orderedTypes(Map<String, List<Contact>> grouped) {
     final knownOrder = ContactValidation.allowedTypes;
     final inKnownOrder = knownOrder.where(grouped.containsKey).toList();
-    final unknown = grouped.keys.where((type) => !knownOrder.contains(type)).toList()..sort();
+    final unknown = grouped.keys.where((type) => !knownOrder.contains(type)).toList()
+      ..sort();
     return [...inKnownOrder, ...unknown];
   }
 
   Future<void> _callContact(Contact contact) async {
     final normalizedPhone = ContactValidation.normalizePhone(contact.phoneNumber);
+    if (normalizedPhone.isEmpty) {
+      AppToast.error(
+        context,
+        title: 'Call unavailable',
+        message: 'This contact has no phone number.',
+      );
+      return;
+    }
+
     final uri = Uri.parse('tel:$normalizedPhone');
 
     try {
@@ -87,6 +115,42 @@ class _ContactsPageState extends State<ContactsPage> {
         AppToast.errorFromException(
           context,
           title: 'Failed to start call',
+          error: error,
+        );
+      }
+    }
+  }
+
+  Future<void> _messageContact(Contact contact) async {
+    final normalizedPhone = ContactValidation.normalizePhone(contact.phoneNumber);
+    if (normalizedPhone.isEmpty) {
+      AppToast.error(
+        context,
+        title: 'Messaging unavailable',
+        message: 'Messaging is not available for this contact.',
+      );
+      return;
+    }
+
+    final uri = Uri.parse('sms:$normalizedPhone');
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        AppToast.error(
+          context,
+          title: 'Messaging unavailable',
+          message: 'Messaging is not available for this contact.',
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.errorFromException(
+          context,
+          title: 'Failed to start messaging',
           error: error,
         );
       }
@@ -165,44 +229,297 @@ class _ContactsPageState extends State<ContactsPage> {
     }
   }
 
-  Widget _buildContactTile(Contact contact) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: () => _showEditContactModal(contact),
-      title: Row(
-        children: [
-          Expanded(child: Text(contact.name)),
-          if (contact.isPreFilled)
-            const Icon(
-              Icons.lock_outline,
-              size: 16,
-              color: Colors.grey,
+  void _openTab(int index) {
+    final onTabSelected = widget.onTabSelected;
+    if (onTabSelected != null) {
+      onTabSelected(index);
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    final routeName = switch (index) {
+      0 => '/home',
+      1 => '/alerts',
+      2 => '/evacuation-centers',
+      3 => '/supplies',
+      4 => null,
+      _ => null,
+    };
+
+    if (routeName == null) {
+      return;
+    }
+
+    if (index == 0) {
+      navigator.pushNamedAndRemoveUntil(routeName, (route) => false);
+    } else {
+      navigator.pushReplacementNamed(routeName);
+    }
+  }
+
+  List<Contact> _personalContacts(List<Contact> contacts) {
+    return contacts.where((contact) => !contact.isPreFilled).toList();
+  }
+
+  List<Contact> _officialContacts(List<Contact> contacts) {
+    return contacts.where((contact) => contact.isPreFilled).toList();
+  }
+
+  String _initialsFor(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return '?';
+    }
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+        .toUpperCase();
+  }
+
+  Color _officialAccent(Contact contact) {
+    final name = contact.name.toLowerCase();
+    if (name.contains('fire')) {
+      return DashboardDesign.warning;
+    }
+    return DashboardDesign.info;
+  }
+
+  IconData _officialIcon(Contact contact) {
+    final name = contact.name.toLowerCase();
+    if (name.contains('fire')) {
+      return Icons.local_fire_department_outlined;
+    }
+    if (name.contains('hospital')) {
+      return Icons.local_hospital_outlined;
+    }
+    if (name.contains('police')) {
+      return Icons.local_police_outlined;
+    }
+    return Icons.verified_user_outlined;
+  }
+
+  Widget _buildHeader() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final addButton = FilledButton.icon(
+          onPressed: _showAddContactModal,
+          icon: const Icon(Icons.person_add_alt_1),
+          label: const Text('Add Contact'),
+          style: FilledButton.styleFrom(
+            backgroundColor: DashboardDesign.deepNavy,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(150, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DashboardDesign.radius),
             ),
-        ],
-      ),
-      subtitle: Text(contact.phoneNumber),
-      leading: const Icon(Icons.person_outline),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Call contact',
-            onPressed: () => _callContact(contact),
-            icon: const Icon(Icons.phone_outlined),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
           ),
-          IconButton(
-            tooltip: contact.isPreFilled ? 'View contact' : 'Edit contact',
-            onPressed: () => _showEditContactModal(contact),
-            icon: Icon(contact.isPreFilled ? Icons.visibility_outlined : Icons.edit_outlined),
-          ),
-          if (!contact.isPreFilled)
-            IconButton(
-              tooltip: 'Delete contact',
-              onPressed: () => _deleteContact(contact),
-              icon: const Icon(Icons.delete_outline),
+        );
+
+        final titleBlock = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Emergency Contacts',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                  ),
             ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              'Tap a contact to initiate immediate communication.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: DashboardDesign.mutedText(context),
+                  ),
+            ),
+          ],
+        );
+
+        if (constraints.maxWidth < 520) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              titleBlock,
+              const SizedBox(height: 14),
+              addButton,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: titleBlock),
+            const SizedBox(width: DashboardDesign.gap),
+            addButton,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        hintText: 'Search name, role, or agency...',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: _query.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Clear search',
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _query = '';
+                  });
+                },
+                icon: const Icon(Icons.close),
+              ),
+        filled: true,
+        fillColor: DashboardDesign.surface(context),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DashboardDesign.radius),
+          borderSide: BorderSide(color: DashboardDesign.outline(context)),
+        ),
       ),
+      onChanged: (value) {
+        setState(() {
+          _query = value;
+        });
+      },
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    Widget? trailing,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: DashboardDesign.statusBackground(
+              context,
+              DashboardDesign.deepNavy,
+            ),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: DashboardDesign.deepNavy, size: 20),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+        ),
+        if (trailing != null) trailing,
+      ],
+    );
+  }
+
+  Widget _buildSystemManagedBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: DashboardDesign.statusBackground(context, DashboardDesign.info),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'System Managed',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: DashboardDesign.info,
+              fontWeight: FontWeight.w900,
+            ),
+      ),
+    );
+  }
+
+  Widget _buildGroupedSection({
+    required String emptyMessage,
+    required List<Contact> contacts,
+    required bool official,
+  }) {
+    if (contacts.isEmpty) {
+      return _EmptyContactsCard(message: emptyMessage);
+    }
+
+    final grouped = _groupByType(contacts);
+    final orderedTypes = _orderedTypes(grouped);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < orderedTypes.length; index++) ...[
+          _ContactTypeGroup(
+            type: orderedTypes[index],
+            contacts: grouped[orderedTypes[index]] ?? const <Contact>[],
+            official: official,
+            initialsFor: _initialsFor,
+            officialAccent: _officialAccent,
+            officialIcon: _officialIcon,
+            onTap: _showEditContactModal,
+            onCall: _callContact,
+            onMessage: _messageContact,
+            onDelete: _deleteContact,
+          ),
+          if (index != orderedTypes.length - 1)
+            const SizedBox(height: DashboardDesign.gap),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildContactsContent(List<Contact> filtered) {
+    final personalContacts = _personalContacts(filtered);
+    final officialContacts = _officialContacts(filtered);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionHeader(
+          icon: Icons.group_outlined,
+          title: 'Personal Network',
+        ),
+        const SizedBox(height: 12),
+        _buildGroupedSection(
+          contacts: personalContacts,
+          official: false,
+          emptyMessage: _query.trim().isEmpty
+              ? 'No personal contacts yet. Add a family or trusted contact.'
+              : 'No personal contacts match your search.',
+        ),
+        const SizedBox(height: DashboardDesign.sectionGap),
+        _buildSectionHeader(
+          icon: Icons.verified_outlined,
+          title: 'Official Authorities',
+          trailing: _buildSystemManagedBadge(),
+        ),
+        const SizedBox(height: 12),
+        _buildGroupedSection(
+          contacts: officialContacts,
+          official: true,
+          emptyMessage: _query.trim().isEmpty
+              ? 'No official contacts are cached yet.'
+              : 'No official contacts match your search.',
+        ),
+      ],
     );
   }
 
@@ -235,6 +552,7 @@ class _ContactsPageState extends State<ContactsPage> {
       isScrollControlled: true,
       isDismissible: true,
       enableDrag: true,
+      backgroundColor: DashboardDesign.surface(context),
       builder: (sheetContext) {
         return _AddContactSheet(
           repository: _repository,
@@ -254,89 +572,502 @@ class _ContactsPageState extends State<ContactsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = MediaQuery.sizeOf(context).width >= 600
+        ? DashboardDesign.marginTablet
+        : DashboardDesign.marginMobile;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Emergency Contacts')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddContactModal,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('Add Contact'),
-      ),
+      backgroundColor: DashboardDesign.background(context),
+      appBar: const CrisyncMainAppBar(),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? CrisyncBottomNavigation(
+              selectedIndex: 4,
+              onDestinationSelected: _openTab,
+            )
+          : null,
       body: ValueListenableBuilder<Box<Contact>>(
         valueListenable: _repository.getContactsListenable(),
         builder: (context, box, _) {
           final allContacts = box.values.toList();
           final filtered = _applySearch(allContacts);
-          final grouped = _groupByType(filtered);
-          final types = _orderedTypes(grouped);
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, number, or type',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _query = '';
-                              });
-                            },
-                            icon: const Icon(Icons.close),
-                          ),
-                    border: const OutlineInputBorder(),
-                    isDense: true,
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                DashboardDesign.gap,
+                horizontalPadding,
+                widget.showBottomNavigation ? 96 : 24,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: DashboardDesign.gap),
+                      _buildSearchField(),
+                      const SizedBox(height: DashboardDesign.sectionGap),
+                      _buildContactsContent(filtered),
+                    ],
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _query = value;
-                    });
-                  },
                 ),
               ),
-              Expanded(
-                child: types.isEmpty
-                    ? const Center(child: Text('No contacts found.'))
-                    : ListView.builder(
-                        padding: EdgeInsets.fromLTRB(
-                          16,
-                          8,
-                          16,
-                          96 + MediaQuery.paddingOf(context).bottom,
-                        ),
-                        itemCount: types.length,
-                        itemBuilder: (context, index) {
-                          final type = types[index];
-                          final contacts = grouped[type] ?? const <Contact>[];
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    type,
-                                    style: Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  for (final contact in contacts) _buildContactTile(contact),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
+            ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ContactTypeGroup extends StatelessWidget {
+  const _ContactTypeGroup({
+    required this.type,
+    required this.contacts,
+    required this.official,
+    required this.initialsFor,
+    required this.officialAccent,
+    required this.officialIcon,
+    required this.onTap,
+    required this.onCall,
+    required this.onMessage,
+    required this.onDelete,
+  });
+
+  final String type;
+  final List<Contact> contacts;
+  final bool official;
+  final String Function(String name) initialsFor;
+  final Color Function(Contact contact) officialAccent;
+  final IconData Function(Contact contact) officialIcon;
+  final ValueChanged<Contact> onTap;
+  final ValueChanged<Contact> onCall;
+  final ValueChanged<Contact> onMessage;
+  final ValueChanged<Contact> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          child: Text(
+            type,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 700 ? 2 : 1;
+            const gap = DashboardDesign.gap;
+            final width =
+                (constraints.maxWidth - (gap * (columns - 1))) / columns;
+
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final contact in contacts)
+                  SizedBox(
+                    width: width,
+                    child: official
+                        ? _OfficialContactCard(
+                            contact: contact,
+                            accentColor: officialAccent(contact),
+                            icon: officialIcon(contact),
+                            onTap: () => onTap(contact),
+                            onCall: () => onCall(contact),
+                          )
+                        : _PersonalContactCard(
+                            contact: contact,
+                            initials: initialsFor(contact.name),
+                            onTap: () => onTap(contact),
+                            onCall: () => onCall(contact),
+                            onMessage: () => onMessage(contact),
+                            onDelete: () => onDelete(contact),
+                          ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _PersonalContactCard extends StatelessWidget {
+  const _PersonalContactCard({
+    required this.contact,
+    required this.initials,
+    required this.onTap,
+    required this.onCall,
+    required this.onMessage,
+    required this.onDelete,
+  });
+
+  final Contact contact;
+  final String initials;
+  final VoidCallback onTap;
+  final VoidCallback onCall;
+  final VoidCallback onMessage;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContactCardShell(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: DashboardDesign.statusBackground(
+              context,
+              DashboardDesign.deepNavy,
+            ),
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: DashboardDesign.deepNavy,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  contact.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  icon: Icons.badge_outlined,
+                  text: contact.type,
+                ),
+                const SizedBox(height: 4),
+                _InfoLine(
+                  icon: Icons.phone_outlined,
+                  text: contact.phoneNumber,
+                ),
+                const SizedBox(height: 10),
+                _ContactActionRow(
+                  callColor: DashboardDesign.deepNavy,
+                  onCall: onCall,
+                  onMessage: onMessage,
+                  onEdit: onTap,
+                  onDelete: onDelete,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfficialContactCard extends StatelessWidget {
+  const _OfficialContactCard({
+    required this.contact,
+    required this.accentColor,
+    required this.icon,
+    required this.onTap,
+    required this.onCall,
+  });
+
+  final Contact contact;
+  final Color accentColor;
+  final IconData icon;
+  final VoidCallback onTap;
+  final VoidCallback onCall;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ContactCardShell(
+      onTap: onTap,
+      leftAccentColor: accentColor,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: DashboardDesign.statusBackground(context, accentColor),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: accentColor, size: 25),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        contact.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.verified_rounded,
+                      color: DashboardDesign.info,
+                      size: 18,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  icon: Icons.apartment_outlined,
+                  text: contact.type,
+                ),
+                const SizedBox(height: 4),
+                _InfoLine(
+                  icon: Icons.phone_outlined,
+                  text: contact.phoneNumber,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: onCall,
+                      icon: const Icon(Icons.phone_outlined, size: 18),
+                      label: const Text('Call'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accentColor,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(96, 42),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            DashboardDesign.compactRadius,
+                          ),
+                        ),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'View contact',
+                      onPressed: onTap,
+                      icon: const Icon(Icons.visibility_outlined),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactCardShell extends StatelessWidget {
+  const _ContactCardShell({
+    required this.child,
+    required this.onTap,
+    this.leftAccentColor,
+  });
+
+  final Widget child;
+  final VoidCallback onTap;
+  final Color? leftAccentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(DashboardDesign.radius),
+          child: Stack(
+            children: [
+              if (leftAccentColor != null)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 5,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: leftAccentColor),
+                  ),
+                ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  leftAccentColor == null ? 16 : 21,
+                  16,
+                  16,
+                  16,
+                ),
+                child: child,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({
+    required this.icon,
+    required this.text,
+  });
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: DashboardDesign.mutedText(context)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContactActionRow extends StatelessWidget {
+  const _ContactActionRow({
+    required this.callColor,
+    required this.onCall,
+    required this.onMessage,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final Color callColor;
+  final VoidCallback onCall;
+  final VoidCallback onMessage;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        FilledButton.icon(
+          onPressed: onCall,
+          icon: const Icon(Icons.phone_outlined, size: 18),
+          label: const Text('Call'),
+          style: FilledButton.styleFrom(
+            backgroundColor: callColor,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(92, 42),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Message contact',
+          onPressed: onMessage,
+          icon: const Icon(Icons.chat_bubble_outline),
+        ),
+        IconButton(
+          tooltip: 'Edit contact',
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_outlined),
+        ),
+        IconButton(
+          tooltip: 'Delete contact',
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_outline),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyContactsCard extends StatelessWidget {
+  const _EmptyContactsCard({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DashboardDesign.surface(context),
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+        border: Border.all(color: DashboardDesign.outline(context)),
+        boxShadow: DashboardDesign.cardShadow(context),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: DashboardDesign.statusBackground(
+                context,
+                DashboardDesign.info,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.contacts_outlined,
+              color: DashboardDesign.info,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: DashboardDesign.mutedText(context),
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -444,6 +1175,25 @@ class _AddContactSheetState extends State<_AddContactSheet> {
   @override
   Widget build(BuildContext context) {
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    const primaryColor = DashboardDesign.deepNavy;
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+      borderSide: BorderSide(
+        color: primaryColor.withValues(alpha: 0.28),
+      ),
+    );
+    final fieldDecorationTheme = Theme.of(context).inputDecorationTheme.copyWith(
+          floatingLabelStyle: const TextStyle(
+            color: primaryColor,
+            fontWeight: FontWeight.w700,
+          ),
+          focusedBorder: fieldBorder.copyWith(
+            borderSide: const BorderSide(
+              color: primaryColor,
+              width: 1.6,
+            ),
+          ),
+        );
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 150),
@@ -452,94 +1202,183 @@ class _AddContactSheetState extends State<_AddContactSheet> {
       child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Add Contact',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nameController,
-                  enabled: !_isSubmitting,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (value) {
-                    final raw = value ?? '';
-                    if (!ContactValidation.isValidName(raw)) {
-                      return 'Enter at least 2 visible characters.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _phoneController,
-                  enabled: !_isSubmitting,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(
+                    primary: primaryColor,
                   ),
-                  validator: (value) {
-                    final raw = value ?? '';
-                    if (!ContactValidation.isValidPhone(raw)) {
-                      return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedType,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: ContactValidation.allowedTypes
-                      .map(
-                        (type) => DropdownMenuItem<String>(
-                          value: type,
-                          child: Text(type),
+              inputDecorationTheme: fieldDecorationTheme,
+              textSelectionTheme: const TextSelectionThemeData(
+                cursorColor: primaryColor,
+                selectionHandleColor: primaryColor,
+              ),
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: const BoxDecoration(
+                      color: DashboardDesign.deepNavy,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(DashboardDesign.radius),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.person_add_alt_1,
+                            color: Colors.white,
+                          ),
                         ),
-                      )
-                      .toList(),
-                  onChanged: _isSubmitting
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _selectedType = value;
-                          });
-                        },
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Select a contact type.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed:
-                            _isSubmitting ? null : () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                      ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Add Contact',
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _isSubmitting ? null : _submit,
-                        child: Text(_isSubmitting ? 'Saving...' : 'Add Contact'),
-                      ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextFormField(
+                          controller: _nameController,
+                          enabled: !_isSubmitting,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Name',
+                            focusedBorder: fieldBorder.copyWith(
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 1.6,
+                              ),
+                            ),
+                            enabledBorder: fieldBorder,
+                          ),
+                          validator: (value) {
+                            final raw = value ?? '';
+                            if (!ContactValidation.isValidName(raw)) {
+                              return 'Enter at least 2 visible characters.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _phoneController,
+                          enabled: !_isSubmitting,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Phone Number',
+                            hintText: '09xxxxxxxxx or +63xxxxxxxxxx',
+                            focusedBorder: fieldBorder.copyWith(
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 1.6,
+                              ),
+                            ),
+                            enabledBorder: fieldBorder,
+                          ),
+                          validator: (value) {
+                            final raw = value ?? '';
+                            if (!ContactValidation.isValidPhone(raw)) {
+                              return 'Use 09xxxxxxxxx or +63xxxxxxxxxx format.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedType,
+                          decoration: InputDecoration(
+                            labelText: 'Type',
+                            focusedBorder: fieldBorder.copyWith(
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 1.6,
+                              ),
+                            ),
+                            enabledBorder: fieldBorder,
+                          ),
+                          items: ContactValidation.allowedTypes
+                              .map(
+                                (type) => DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(type),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _isSubmitting
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _selectedType = value;
+                                  });
+                                },
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Select a contact type.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _isSubmitting
+                                    ? null
+                                    : () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: primaryColor,
+                                  side: const BorderSide(
+                                    color: primaryColor,
+                                  ),
+                                ),
+                                child: const Text('Cancel'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: _isSubmitting ? null : _submit,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text(
+                                  _isSubmitting ? 'Saving...' : 'Add Contact',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/shared/widgets/app_alert_banner.dart';
 import 'package:project_bihon/shared/widgets/app_button.dart';
 import 'package:project_bihon/shared/widgets/app_card.dart';
@@ -174,6 +175,10 @@ class _DownloadOfflineMapButtonState extends State<DownloadOfflineMapButton> {
                     ? null
                     : _downloadOfflineMap,
                 enabled: _state != _DownloadState.downloading,
+                lightBackgroundColor: DashboardDesign.deepNavy,
+                darkBackgroundColor: DashboardDesign.primary(context),
+                lightForegroundColor: Colors.white,
+                darkForegroundColor: Colors.white,
                 child: const Text('Download Offline Map'),
               ),
             ),

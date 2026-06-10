@@ -8,8 +8,22 @@ class SupplyRepository {
   late Box<SupplyItem> _box;
 
   /// Initialize the Hive box. Call this once at app startup.
+  /// If the box contains corrupt or incompatible data, it will be cleared.
   Future<void> initBox() async {
-    _box = await Hive.openBox<SupplyItem>(_boxName);
+    try {
+      _box = await Hive.openBox<SupplyItem>(_boxName);
+    } catch (e) {
+      debugPrint('[SupplyRepository] Error opening supply_box: $e');
+      debugPrint('[SupplyRepository] Clearing corrupted Hive box and retrying');
+      try {
+        await Hive.deleteBoxFromDisk(_boxName);
+        _box = await Hive.openBox<SupplyItem>(_boxName);
+        debugPrint('[SupplyRepository] Supply box successfully recovered');
+      } catch (e2) {
+        debugPrint('[SupplyRepository] Fatal error recovering supply_box: $e2');
+        rethrow;
+      }
+    }
   }
 
   /// Get all items as a list.

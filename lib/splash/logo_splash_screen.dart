@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'dart:async';
 
 class LogoSplashScreen extends StatefulWidget {
-  const LogoSplashScreen({super.key});
+  const LogoSplashScreen({super.key, this.resolveNextRoute});
+
+  final Future<String> Function()? resolveNextRoute;
 
   @override
   State<LogoSplashScreen> createState() => _LogoSplashScreenState();
@@ -10,36 +13,92 @@ class LogoSplashScreen extends StatefulWidget {
 
 class _LogoSplashScreenState extends State<LogoSplashScreen>
     with WidgetsBindingObserver {
-  late VideoPlayerController _controller;
-  late ValueNotifier<VideoPlayerValue> _videoStateNotifier;
+  VideoPlayerController? _controller;
+  late final ValueNotifier<VideoPlayerValue> _videoStateNotifier;
+  Timer? _fallbackTimer;
   bool _navigationTriggered = false;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('[SPLASH] initState called');
     WidgetsBinding.instance.addObserver(this);
-    _videoStateNotifier = ValueNotifier(VideoPlayerValue(duration: Duration.zero));
+    _videoStateNotifier = ValueNotifier(
+      VideoPlayerValue(duration: Duration.zero),
+    );
+    _scheduleFallbackNavigation();
     _initializeVideo();
+  }
+
+  void _scheduleFallbackNavigation() {
+    _fallbackTimer?.cancel();
+    debugPrint('[SPLASH] Scheduling fallback navigation in 3 seconds');
+    _fallbackTimer = Timer(const Duration(seconds: 3), () {
+      debugPrint(
+        '[SPLASH] Fallback timer fired, mounted=$mounted, triggered=$_navigationTriggered',
+      );
+      if (mounted && !_navigationTriggered) {
+        _navigateNext('[SPLASH] Fallback');
+      }
+    });
+  }
+
+  Future<void> _navigateNext(String reason) async {
+    if (_navigationTriggered) {
+      return;
+    }
+    _navigationTriggered = true;
+
+    var routeName = '/home';
+    try {
+      final resolver = widget.resolveNextRoute;
+      if (resolver != null) {
+        routeName = await resolver();
+      }
+    } catch (e) {
+      debugPrint('$reason route resolution error: $e');
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    try {
+      debugPrint('$reason: navigating to $routeName');
+      Navigator.of(context).pushReplacementNamed(routeName);
+    } catch (e) {
+      debugPrint('$reason navigation error: $e');
+    }
   }
 
   Future<void> _initializeVideo() async {
     try {
-      _controller = VideoPlayerController.asset('assets/logo_opener.mp4');
-      await _controller.initialize();
+      debugPrint('[SPLASH] Starting video initialization');
+      final controller = VideoPlayerController.asset('assets/logo_opener.mp4');
+      _controller = controller;
+      debugPrint('[SPLASH] Created controller, awaiting initialize');
+      await controller.initialize();
+      debugPrint('[SPLASH] Controller initialized successfully');
 
-      if (!mounted) return;
+      if (!mounted) {
+        debugPrint('[SPLASH] Widget unmounted, aborting');
+        return;
+      }
 
-      _controller.addListener(_onVideoStateChanged);
-      _videoStateNotifier.value = _controller.value;
+      controller.addListener(_onVideoStateChanged);
+      _videoStateNotifier.value = controller.value;
 
-      _controller.play();
+      debugPrint('[SPLASH] Starting video playback');
+      await controller.play();
     } catch (e) {
       debugPrint('[SPLASH] Video initialization failed: $e');
       if (mounted) {
+        debugPrint(
+          '[SPLASH] Scheduling 1.5s delayed navigation after video error',
+        );
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (mounted && !_navigationTriggered) {
-            _navigationTriggered = true;
-            Navigator.of(context).pushReplacementNamed('/home');
+            _navigateNext('[SPLASH] Delayed nav after video error');
           }
         });
       }
@@ -49,18 +108,24 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
   void _onVideoStateChanged() {
     if (!mounted) return;
 
-    _videoStateNotifier.value = _controller.value;
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
 
-    final isVideoEnded = _controller.value.isInitialized &&
-        _controller.value.position >= _controller.value.duration - const Duration(milliseconds: 100);
+    _videoStateNotifier.value = controller.value;
+
+    final isVideoEnded =
+        controller.value.isInitialized &&
+        controller.value.position >=
+            controller.value.duration - const Duration(milliseconds: 100);
 
     if (isVideoEnded && !_navigationTriggered) {
-      debugPrint('[SPLASH] Video completed, navigating to home');
-      _navigationTriggered = true;
+      debugPrint('[SPLASH] Video completed, navigating to next route');
+      _fallbackTimer?.cancel();
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
-          debugPrint('[SPLASH] Navigating to HomePage now');
-          Navigator.of(context).pushReplacementNamed('/home');
+          _navigateNext('[SPLASH] Video complete');
         }
       });
     }
@@ -69,12 +134,14 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      _controller.pause();
+      _controller?.pause();
     } else if (state == AppLifecycleState.resumed) {
-      if (_controller.value.isInitialized &&
-          !_controller.value.isPlaying &&
+      final controller = _controller;
+      if (controller != null &&
+          controller.value.isInitialized &&
+          !controller.value.isPlaying &&
           !_navigationTriggered) {
-        _controller.play();
+        controller.play();
       }
     }
   }
@@ -82,8 +149,9 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller.removeListener(_onVideoStateChanged);
-    _controller.dispose();
+    _fallbackTimer?.cancel();
+    _controller?.removeListener(_onVideoStateChanged);
+    _controller?.dispose();
     _videoStateNotifier.dispose();
     super.dispose();
   }
@@ -91,33 +159,36 @@ class _LogoSplashScreenState extends State<LogoSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFFFF),
       body: Center(
         child: ValueListenableBuilder<VideoPlayerValue>(
           valueListenable: _videoStateNotifier,
           builder: (context, videoState, _) {
-            if (!videoState.isInitialized) {
-              return const SizedBox.expand(
-                child: ColoredBox(
-                  color: Colors.white,
+            // If video is initialized and has no error, show video
+            if (videoState.isInitialized &&
+                !videoState.hasError &&
+                _controller != null) {
+              return Container(
+                color: Colors.white,
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: videoState.aspectRatio,
+                    child: VideoPlayer(_controller!),
+                  ),
                 ),
               );
             }
 
-            if (videoState.hasError) {
-              return const SizedBox.expand(
-                child: ColoredBox(
-                  color: Colors.white,
-                ),
-              );
-            }
-
-            return Container(
-              color: Colors.white,
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: videoState.aspectRatio,
-                  child: VideoPlayer(_controller),
+            // Keep the intended Crisync branding visible while the video loads.
+            return SizedBox.expand(
+              child: ColoredBox(
+                color: Colors.white,
+                child: Center(
+                  child: Image.asset(
+                    'assets/logo.png',
+                    width: 280,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             );

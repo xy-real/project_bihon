@@ -6,13 +6,27 @@ import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
 /// This is a read-only repository in the render path; write operations
 /// (syncing alerts from cloud) happen elsewhere.
 class AlertsRepository {
-  static const String boxName = 'cached_alerts_box';
+  static const String boxName = CachedAlert.boxName;
 
   late Box<CachedAlert> _box;
 
   /// Must be called once during app startup after Hive.initFlutter().
+  /// If the box contains corrupt or incompatible data, it will be cleared.
   Future<void> initBox() async {
-    _box = await Hive.openBox<CachedAlert>(boxName);
+    try {
+      _box = await Hive.openBox<CachedAlert>(boxName);
+    } catch (e) {
+      debugPrint('[AlertsRepository] Error opening $boxName: $e');
+      debugPrint('[AlertsRepository] Clearing corrupted Hive box and retrying');
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+        _box = await Hive.openBox<CachedAlert>(boxName);
+        debugPrint('[AlertsRepository] Alerts box successfully recovered');
+      } catch (e2) {
+        debugPrint('[AlertsRepository] Fatal error recovering $boxName: $e2');
+        rethrow;
+      }
+    }
   }
 
   /// Get all active alerts from Hive.

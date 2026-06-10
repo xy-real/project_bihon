@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_bihon/features/alerts/data/models/cached_alert.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 
 /// Alert card for direct threats to the household.
 ///
@@ -32,146 +33,133 @@ class DirectThreatAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentColor = isDark ? Colors.orange[700]! : Colors.red;
-    final accentBg = isDark ? Colors.orange[900]! : Colors.red[50]!;
-    final textColor = isDark ? Colors.white : Colors.black87;
+    const accentColor = DashboardDesign.danger;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.transparent,
+      shadowColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DashboardDesign.radius),
+      ),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border(
-            left: BorderSide(
-              color: accentColor,
-              width: 4,
-              style: BorderStyle.solid,
-            ),
-          ),
+          color: DashboardDesign.surface(context),
+          borderRadius: BorderRadius.circular(DashboardDesign.radius),
+          border: Border.all(color: DashboardDesign.outline(context)),
+          boxShadow: DashboardDesign.cardShadow(context),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header row with icon and label chip
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: accentColor,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Chip(
-                        label: Text(
-                          'HIGH RISK FOR YOUR AREA',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                        ),
-                        backgroundColor: accentColor,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Alert title
-                  Text(
-                    alert.title.isNotEmpty ? alert.title : 'Alert',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Alert content
-                  Text(
-                    alert.content.isNotEmpty
-                        ? alert.content
-                        : 'No additional details available',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: textColor,
-                          height: 1.5,
-                        ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Footer: severity badge and published date
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: accentBg,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          alert.severity.isNotEmpty
-                              ? alert.severity.toUpperCase()
-                              : 'UNKNOWN',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: accentColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        _formatDate(alert.publishedAt),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[500],
-                            ),
-                      ),
-                    ],
-                  ),
-
-                  // More details button
-                  if (onMoreDetails != null) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: onMoreDetails,
-                        icon: const Icon(Icons.info_outline, size: 18),
-                        label: const Text('More Details'),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: accentColor),
-                          foregroundColor: accentColor,
-                        ),
+            borderRadius: BorderRadius.circular(DashboardDesign.radius),
+            child: Stack(
+              children: [
+                const Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 5,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      borderRadius: BorderRadius.horizontal(
+                        left: Radius.circular(DashboardDesign.radius),
                       ),
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(21, 16, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _StatusIcon(color: accentColor),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              alert.title.isNotEmpty ? alert.title : 'Alert',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: textColor,
+                                  ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _StatusBadge(
+                            label: 'URGENT',
+                            color: accentColor,
+                            backgroundColor: const Color(0xFFFFDAD6),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        alert.content.isNotEmpty
+                            ? alert.content
+                            : 'No additional details available',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: DashboardDesign.mutedText(context),
+                              height: 1.45,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _formatDate(alert.publishedAt),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: DashboardDesign.mutedText(context),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                          if (onMoreDetails != null)
+                            TextButton(
+                              onPressed: onMoreDetails,
+                              style: TextButton.styleFrom(
+                                foregroundColor: accentColor,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
+                                minimumSize: const Size(48, 40),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('More Details'),
+                                  SizedBox(width: 2),
+                                  Icon(Icons.chevron_right, size: 18),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -193,5 +181,64 @@ class DirectThreatAlertCard extends StatelessWidget {
     } else {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
     }
+  }
+}
+
+class _StatusIcon extends StatelessWidget {
+  const _StatusIcon({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: DashboardDesign.statusBackground(context, color),
+        borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+      ),
+      child: Icon(
+        Icons.warning_amber_rounded,
+        color: color,
+        size: 26,
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({
+    required this.label,
+    required this.color,
+    required this.backgroundColor,
+  });
+
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          backgroundColor.withValues(
+            alpha: Theme.of(context).brightness == Brightness.dark ? 0.28 : 1,
+          ),
+          DashboardDesign.surface(context),
+        ),
+        borderRadius: BorderRadius.circular(DashboardDesign.compactRadius),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+      ),
+    );
   }
 }
