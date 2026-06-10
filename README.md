@@ -614,10 +614,48 @@ The following release notes were preserved from the original README. They are hi
 
 | Internal Release Code | Date Released |
 |:-----------------|:--------------|
+| PB.010.004       | 2026-06-10    |
 | PB.010.003       | 2026-05-23    |
 | PB.010.002       | 2026-04-13    |
 | PB.010.001       | 2026-04-05    |
 | PB.010.000       | 2026-03-01    |
+
+### PB.010.004 Release Notes
+
+#### Implemented Features
+
+- *AI Preparedness Score (Gemini Integration)*
+  - Calculates a localized household readiness score (0-100) and generates personalized "Go-Bag" recommendations.
+  - Aggregates local unexpired supply inventory and household risk data dynamically.
+  - Enforces strict privacy sanitization; strips all Personally Identifiable Information (PII) before interacting with the Gemini API.
+  - Caches the AI's response and custom advice in Hive, allowing the dashboard to render the last known score instantly during network blackouts.
+- *Preparedness Instruction Module*
+  - Provides categorized, step-by-step interactive survival guides (e.g., Typhoons, Floods, Earthquakes, First Aid).
+  - Operates 100% offline using highly-compressed bundled asset images and predefined text.
+  - Tracks reading/completion state via Hive.
+- *PAGASA Cloud-to-Local Ingestion Pipeline*
+  - Deployed Supabase Edge Function (fetch-pagasa-alerts) to securely fetch, parse, and normalize upstream weather data.
+  - Configured Supabase pg_cron to automate data fetching every 15 minutes.
+  - Finalized the offline-first Flutter sync service to pull active cloud rows directly into the local Hive alert_box.
+
+#### App Integration
+
+- Integrated the google_generative_ai package and wired the GEMINI_API_KEY environment variable.
+- Added the AI Preparedness dashboard widget and detailed recalculation screen with offline-blocking safety checks.
+- Wired the Preparedness Instruction category grid and swipeable page viewers into the main application routing.
+- Established the single-source-of-truth UI contract: the app now reads alerts exclusively from the local Hive cache.
+
+#### Quality and Stability Updates
+
+- Verified AI prompt sanitization to ensure zero data leakage of exact GPS coordinates, names, or phone numbers.
+- Added graceful offline fallback for the AI Score screen: it successfully displays the calculatedAt timestamp and cached data when Wi-Fi/Data is disabled.
+- Ensured local guide images load instantly in Airplane Mode without causing application UI thread stuttering.
+- Tested Supabase Edge Function timeout and retry logic to prevent mobile app crashes during upstream PAGASA server degradation.
+
+#### Known Issues
+
+- Official PAGASA REST API endpoints are not yet available; the Edge Function currently relies on a public-source parser which may require updates if upstream HTML structures change.
+- Preparedness guide seed data is currently inserted only when the Hive box is empty; future updates to guide text may require a migration script.
 
 ### PB.010.003 Release Notes
 
