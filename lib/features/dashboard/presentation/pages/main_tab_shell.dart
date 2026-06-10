@@ -6,6 +6,7 @@ import 'package:project_bihon/features/alerts/data/services/alert_sync_coordinat
 import 'package:project_bihon/features/alerts/presentation/pages/alerts_list_page.dart';
 import 'package:project_bihon/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_bottom_navigation.dart';
+import 'package:project_bihon/features/dashboard/presentation/widgets/crisync_main_app_bar.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 import 'package:project_bihon/features/emergency_contacts/data/repositories/contact_repository.dart';
 import 'package:project_bihon/features/emergency_contacts/presentation/pages/contacts_page.dart';
@@ -106,28 +107,6 @@ class _MainTabShellState extends State<MainTabShell> {
     });
   }
 
-  Widget _buildLogoAvatar() {
-    return CircleAvatar(
-      radius: 18,
-      backgroundColor: DashboardDesign.deepNavy,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/logo.png',
-          width: 36,
-          height: 36,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.shield_outlined,
-              color: Colors.white,
-              size: 20,
-            );
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _buildHomeTab() {
     return Scaffold(
       appBar: AppBar(
@@ -140,7 +119,7 @@ class _MainTabShellState extends State<MainTabShell> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildLogoAvatar(),
+            const CrisyncHeaderLogo(),
             const SizedBox(width: 10),
             const Text(
               'Crisync',

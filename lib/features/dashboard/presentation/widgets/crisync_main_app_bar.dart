@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:project_bihon/features/dashboard/presentation/widgets/dashboard_design.dart';
 
+class CrisyncHeaderLogo extends StatelessWidget {
+  const CrisyncHeaderLogo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 36,
+      height: 36,
+      child: Image.asset('assets/crisync_logo.png', fit: BoxFit.contain),
+    );
+  }
+}
+
 class CrisyncMainAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CrisyncMainAppBar({super.key});
 
@@ -20,30 +33,9 @@ class CrisyncMainAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: DashboardDesign.deepNavy,
-            child: ClipOval(
-              child: Image.asset(
-                'assets/logo.png',
-                width: 36,
-                height: 36,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.shield_outlined,
-                    color: Colors.white,
-                    size: 20,
-                  );
-                },
-              ),
-            ),
-          ),
+          const CrisyncHeaderLogo(),
           const SizedBox(width: 10),
-          const Text(
-            'Crisync',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
+          const Text('Crisync', style: TextStyle(fontWeight: FontWeight.w800)),
         ],
       ),
       actions: [
