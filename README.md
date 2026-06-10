@@ -4,6 +4,10 @@ Crisync is a local-first, offline-capable emergency preparedness and response ap
 
 The app is built as a Flutter application with Hive for local persistence, Supabase for cloud alert and evacuation-center sync, and a Supabase Edge Function for PAGASA-style alert ingestion. The mobile UI reads from local Hive caches wherever possible so core emergency information can still render when connectivity is weak or unavailable.
 
+## 📥 Download Latest Release
+
+**[Download v1.0.0-beta](https://github.com/xy-real/project_bihon/releases/tag/v1.0.0-beta)** — Get the latest beta APK for Android devices
+
 ## Features
 
 - Emergency Supply Tracker with add/edit/delete, category tracking, expiration dates, photos, and local expiration reminders.
@@ -610,15 +614,96 @@ SMS compose not opening:
 
 ## Release History
 
-The following release notes were preserved from the original README. They are historical notes; the setup and known-limitation sections above reflect the current repository scan.
+| Version | Date Released |
+|:--------|:--------------|
+| v1.0.0-beta | 2026-06-10 |
+| PB.010.004 | 2026-06-10 |
+| PB.010.003 | 2026-05-23 |
+| PB.010.002 | 2026-04-13 |
+| PB.010.001 | 2026-04-05 |
+| PB.010.000 | 2026-03-01 |
 
-| Internal Release Code | Date Released |
-|:-----------------|:--------------|
-| PB.010.004       | 2026-06-10    |
-| PB.010.003       | 2026-05-23    |
-| PB.010.002       | 2026-04-13    |
-| PB.010.001       | 2026-04-05    |
-| PB.010.000       | 2026-03-01    |
+### v1.0.0-beta - Initial Release (Beta)
+
+⚠️ **Beta Release** — This version contains known issues and ongoing testing. Not recommended for production use.
+
+**Your Family's Emergency Preparedness Companion**
+
+#### What's Included
+
+**📦 Emergency Supply Tracker**
+- Organize household supplies by category with expiration tracking
+- Photo documentation for quick identification
+- Local reminders before items expire
+
+**🚨 Location-Specific Alerts**
+- Real-time PAGASA typhoon and weather alerts synced to your app
+- Alerts filtered by your household risk profile (coastal, flood-prone, landslide-prone)
+- Works completely offline with cached data
+
+**📍 Evacuation Center Locator**
+- Browse nearby evacuation centers on an interactive map
+- Offline maps with OpenStreetMap tiles
+- Location-based sorting for quick access
+
+**🤖 AI Preparedness Score**
+- Powered by Google Gemini - get an instant assessment of your household's disaster readiness
+- Smart recommendations based on your supplies and risk factors
+- Results cached for offline access
+
+**📞 Emergency Contacts**
+- Pre-loaded with Baybay City emergency services
+- Quick SMS broadcast to send your safety status to contacts
+- Easy contact management
+
+**📚 Preparedness Guides**
+- Offline-first disaster preparedness guides bundled with local images
+- No internet required to access critical information
+
+**✈️ Easy Navigation**
+- Swipeable tab interface for quick access to Dashboard, Alerts, Evacuation Centers, Supplies, and Contacts
+- Intuitive household onboarding on first launch
+
+#### Key Features
+
+✅ **Offline-First Design** — All critical data synced and cached locally  
+✅ **Designed for Philippines** — PAGASA integration + Baybay City emergency contacts  
+✅ **Supports Weak Connectivity** — Works with slow or no internet  
+✅ **AI-Powered Insights** — Gemini-based household preparedness assessment  
+✅ **Emergency-Ready** — SMS broadcast capability for family safety alerts  
+
+#### Installation & Setup
+
+1. Go to [Releases](https://github.com/xy-real/project_bihon/releases)
+2. Download the APK file
+3. Install on your Android device
+4. Complete the household risk profile setup on first launch
+
+#### Requirements
+
+- **Android 8.0 or higher**
+- **Internet connection** (recommended for alerts sync; app functions offline)
+- **Google Gemini API key** (for preparedness scoring feature)
+
+#### Known Limitations
+
+- Android-only (iOS coming soon)
+- Gemini API key must be provided at build time
+- Official PAGASA REST API endpoints not yet available; currently uses public-source parser
+- Offline map support is partially wired; full cached tile provider integration pending
+- Release Android signing currently uses debug signing config; production signing required before publishing
+
+#### Getting Started
+
+1. Install and open Crisync
+2. Set your household risk profile during onboarding
+3. Add your emergency supplies to the tracker
+4. Review local preparedness guides
+5. Check your household's preparedness score
+6. Save emergency contacts
+7. Enable push notifications for timely alerts
+
+**Stay safe and prepared! 🛡️**
 
 ### PB.010.004 Release Notes
 
